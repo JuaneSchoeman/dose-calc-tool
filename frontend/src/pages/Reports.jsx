@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+function tagClass(category) {
+  return `tag tag-${category.replace(/\//g, '\\/')}`;
+}
+
 export default function Reports() {
   const { authFetch, user } = useAuth();
   const [start, setStart] = useState('');
@@ -11,7 +15,13 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
 
   if (user?.role !== 'admin') {
-    return <p>Reports are only available to administrator accounts.</p>;
+    return (
+      <div className="card">
+        <div className="empty-state">
+          <p>Reports are only available to administrator accounts.</p>
+        </div>
+      </div>
+    );
   }
 
   async function loadReports() {
@@ -42,46 +52,67 @@ export default function Reports() {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif' }}>
-      <h2>Usage reports (admin)</h2>
+    <div className="card">
+      <h2>Usage reports</h2>
 
-      <label>
-        Start date <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
-      </label>
-      <label style={{ marginLeft: '1rem' }}>
-        End date <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
-      </label>
-      <button onClick={loadReports} disabled={loading} style={{ marginLeft: '1rem' }}>
-        {loading ? 'Loading...' : 'Generate reports'}
-      </button>
+      <div className="field-row" style={{ alignItems: 'flex-end' }}>
+        <label className="field">
+          <span className="field-label">Start date</span>
+          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+        </label>
+        <label className="field">
+          <span className="field-label">End date</span>
+          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+        </label>
+      </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <div className="btn-row" style={{ marginTop: 0 }}>
+        <button className="btn btn-primary" onClick={loadReports} disabled={loading}>
+          {loading ? 'Generating…' : 'Generate reports'}
+        </button>
+      </div>
+
+      {error && <div className="alert alert-error" role="alert"><p>{error}</p></div>}
 
       {byCategory && (
-        <div style={{ marginTop: '1.5rem' }}>
-          <h3>FR13 — Usage by category</h3>
-          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
-            <thead><tr><th>Category</th><th>Count</th></tr></thead>
-            <tbody>
-              {byCategory.map((row) => (
-                <tr key={row.category}><td>{row.category}</td><td>{row.count}</td></tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ marginTop: '1.75rem' }}>
+          <h3 style={{ fontSize: '0.95rem', marginBottom: '0.75rem' }}>Usage by category</h3>
+          {byCategory.length === 0 ? (
+            <div className="empty-state"><p>No calculations recorded in this range.</p></div>
+          ) : (
+            <table className="data-table">
+              <thead><tr><th>Category</th><th style={{ textAlign: 'right' }}>Count</th></tr></thead>
+              <tbody>
+                {byCategory.map((row) => (
+                  <tr key={row.category}>
+                    <td><span className={tagClass(row.category)}>{row.category}</span></td>
+                    <td className="num-cell">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
       {byUser && (
-        <div style={{ marginTop: '1.5rem' }}>
-          <h3>FR14 — Usage by user</h3>
-          <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
-            <thead><tr><th>User</th><th>Count</th></tr></thead>
-            <tbody>
-              {byUser.map((row) => (
-                <tr key={row.email}><td>{row.email}</td><td>{row.count}</td></tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ marginTop: '1.75rem' }}>
+          <h3 style={{ fontSize: '0.95rem', marginBottom: '0.75rem' }}>Usage by user</h3>
+          {byUser.length === 0 ? (
+            <div className="empty-state"><p>No calculations recorded in this range.</p></div>
+          ) : (
+            <table className="data-table">
+              <thead><tr><th>User</th><th style={{ textAlign: 'right' }}>Count</th></tr></thead>
+              <tbody>
+                {byUser.map((row) => (
+                  <tr key={row.email}>
+                    <td>{row.email}</td>
+                    <td className="num-cell">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>

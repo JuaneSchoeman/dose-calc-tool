@@ -10,20 +10,24 @@ function AuthenticatedApp() {
   const [tab, setTab] = useState('calculator');
 
   return (
-    <div style={{ maxWidth: 700, margin: '2rem auto', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1>Dose Calculator</h1>
+    <div className="app-shell">
+      <div className="app-header">
         <div>
-          <span style={{ marginRight: '1rem' }}>{user.email} ({user.role})</span>
-          <button onClick={logout}>Log out</button>
+          <h1>Dose Calculator</h1>
+          <div className="subtitle">Weight- and BSA-based dosing, calculated and shown step by step.</div>
+        </div>
+        <div className="session-info">
+          <span>{user.email}</span>
+          <span className="role-badge">{user.role}</span>
+          <button className="btn-text" onClick={logout}>Log out</button>
         </div>
       </div>
 
-      <nav style={{ marginBottom: '1.5rem' }}>
+      <nav className="tab-nav">
         <button onClick={() => setTab('calculator')} disabled={tab === 'calculator'}>Calculator</button>
-        <button onClick={() => setTab('history')} disabled={tab === 'history'} style={{ marginLeft: '0.5rem' }}>My history</button>
+        <button onClick={() => setTab('history')} disabled={tab === 'history'}>My history</button>
         {user.role === 'admin' && (
-          <button onClick={() => setTab('reports')} disabled={tab === 'reports'} style={{ marginLeft: '0.5rem' }}>Reports</button>
+          <button onClick={() => setTab('reports')} disabled={tab === 'reports'}>Reports</button>
         )}
       </nav>
 

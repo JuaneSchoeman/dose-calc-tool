@@ -20,6 +20,10 @@ const initialState = {
   dosePerM2: '',
 };
 
+function tagClass(category) {
+  return `tag tag-${category.replace(/\//g, '\\/')}`;
+}
+
 export default function Calculator() {
   const { authFetch } = useAuth();
   const [form, setForm] = useState(initialState);
@@ -31,7 +35,6 @@ export default function Calculator() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  // FR11 — Reset/clear inputs
   function handleReset() {
     setForm(initialState);
     setResult(null);
@@ -80,74 +83,120 @@ export default function Calculator() {
   }
 
   return (
-    <div style={{ maxWidth: 480, fontFamily: 'sans-serif' }}>
+    <div className="card">
       <h2>Calculate a dose</h2>
 
       <form onSubmit={handleSubmit}>
-        <label>
-          Calculation type
-          <select value={form.calculationType} onChange={(e) => updateField('calculationType', e.target.value)}>
-            <option value="weight-based">Weight-based</option>
-            <option value="bsa-based">BSA-based</option>
-          </select>
-        </label>
+        <div className="field-row">
+          <label className="field">
+            <span className="field-label">Calculation type</span>
+            <select value={form.calculationType} onChange={(e) => updateField('calculationType', e.target.value)}>
+              <option value="weight-based">Weight-based</option>
+              <option value="bsa-based">BSA-based</option>
+            </select>
+          </label>
 
-        <label>
-          Clinical category
-          <select value={form.category} onChange={(e) => updateField('category', e.target.value)}>
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </label>
+          <label className="field">
+            <span className="field-label">Clinical category</span>
+            <select value={form.category} onChange={(e) => updateField('category', e.target.value)}>
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-        <label>
-          Weight
-          <input type="number" step="any" value={form.weightValue} onChange={(e) => updateField('weightValue', e.target.value)} placeholder="e.g. 70" />
-          <select value={form.weightUnit} onChange={(e) => updateField('weightUnit', e.target.value)}>
-            <option value="kg">kg</option>
-            <option value="lb">lb</option>
-          </select>
+        <label className="field">
+          <span className="field-label">Weight</span>
+          <div className="field-row">
+            <input
+              type="number"
+              step="any"
+              value={form.weightValue}
+              onChange={(e) => updateField('weightValue', e.target.value)}
+              placeholder="e.g. 70"
+            />
+            <select className="unit-select" value={form.weightUnit} onChange={(e) => updateField('weightUnit', e.target.value)}>
+              <option value="kg">kg</option>
+              <option value="lb">lb</option>
+            </select>
+          </div>
+          <span className="field-hint">Accepted range: 0.5–300 kg (1.1–660 lb)</span>
         </label>
 
         {form.calculationType === 'bsa-based' && (
-          <label>
-            Height (cm)
-            <input type="number" step="any" value={form.heightCm} onChange={(e) => updateField('heightCm', e.target.value)} placeholder="e.g. 170" />
+          <label className="field">
+            <span className="field-label">Height (cm)</span>
+            <input
+              type="number"
+              step="any"
+              value={form.heightCm}
+              onChange={(e) => updateField('heightCm', e.target.value)}
+              placeholder="e.g. 170"
+            />
+            <span className="field-hint">Accepted range: 30–250 cm</span>
           </label>
         )}
 
         {form.calculationType === 'weight-based' ? (
-          <label>
-            Dose per kg
-            <input type="number" step="any" value={form.dosePerKg} onChange={(e) => updateField('dosePerKg', e.target.value)} placeholder="e.g. 2" />
+          <label className="field">
+            <span className="field-label">Dose per kg</span>
+            <input
+              type="number"
+              step="any"
+              value={form.dosePerKg}
+              onChange={(e) => updateField('dosePerKg', e.target.value)}
+              placeholder="e.g. 2"
+            />
           </label>
         ) : (
-          <label>
-            Dose per m²
-            <input type="number" step="any" value={form.dosePerM2} onChange={(e) => updateField('dosePerM2', e.target.value)} placeholder="e.g. 100" />
+          <label className="field">
+            <span className="field-label">Dose per m²</span>
+            <input
+              type="number"
+              step="any"
+              value={form.dosePerM2}
+              onChange={(e) => updateField('dosePerM2', e.target.value)}
+              placeholder="e.g. 100"
+            />
           </label>
         )}
 
-        <div style={{ marginTop: '1rem' }}>
-          <button type="submit" disabled={loading}>{loading ? 'Calculating...' : 'Calculate'}</button>
-          <button type="button" onClick={handleReset} style={{ marginLeft: '0.5rem' }}>Reset</button>
+        <div className="btn-row">
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Calculating…' : 'Calculate'}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={handleReset}>
+            Reset
+          </button>
         </div>
       </form>
 
       {errors.length > 0 && (
-        <div style={{ color: 'red', marginTop: '1rem' }}>
-          {errors.map((err) => <p key={err}>{err}</p>)}
+        <div className="alert alert-error" role="alert">
+          {errors.map((err) => (
+            <p key={err}>{err}</p>
+          ))}
         </div>
       )}
 
       {result && (
-        <div style={{ marginTop: '1rem', border: '1px solid #ccc', padding: '1rem' }}>
-          <h3>Result: {result.result}</h3>
-          <h4>Steps</h4>
-          <ol>
-            {result.steps.map((step, i) => <li key={i}>{step.label}</li>)}
-          </ol>
+        <div className="ledger">
+          <div className="ledger-heading">
+            <span className={tagClass(form.category)}>{form.category}</span>
+            {'  '}Calculation trace
+          </div>
+          <div className="ledger-steps">
+            {result.steps.map((step, i) => (
+              <div className="ledger-step" key={i}>
+                <div className="ledger-step-label">{step.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="result-chip">
+            <span className="result-chip-label">Final dose</span>
+            <span className="result-chip-value">{result.result}</span>
+          </div>
         </div>
       )}
     </div>

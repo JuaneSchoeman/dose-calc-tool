@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+function tagClass(category) {
+  return `tag tag-${category.replace(/\//g, '\\/')}`;
+}
+
 export default function History() {
   const { authFetch } = useAuth();
   const [history, setHistory] = useState([]);
@@ -23,31 +27,39 @@ export default function History() {
     load();
   }, [authFetch]);
 
-  if (loading) return <p>Loading history...</p>;
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
-
   return (
-    <div style={{ fontFamily: 'sans-serif' }}>
+    <div className="card">
       <h2>My calculation history</h2>
-      {history.length === 0 ? (
-        <p>No calculations yet.</p>
-      ) : (
-        <table border="1" cellPadding="6" style={{ borderCollapse: 'collapse' }}>
+
+      {loading && <p style={{ color: 'var(--color-ink-muted)' }}>Loading…</p>}
+      {error && (
+        <div className="alert alert-error" role="alert"><p>{error}</p></div>
+      )}
+
+      {!loading && !error && history.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-state-icon">—</div>
+          <p>No calculations yet. Results will appear here once you run one.</p>
+        </div>
+      )}
+
+      {!loading && !error && history.length > 0 && (
+        <table className="data-table">
           <thead>
             <tr>
-              <th>Date/time</th>
+              <th>Date &amp; time</th>
               <th>Category</th>
               <th>Type</th>
-              <th>Result</th>
+              <th style={{ textAlign: 'right' }}>Result</th>
             </tr>
           </thead>
           <tbody>
             {history.map((row) => (
               <tr key={row.id}>
-                <td>{row.createdAt}</td>
-                <td>{row.category}</td>
-                <td>{row.calcType}</td>
-                <td>{row.result}</td>
+                <td className="num-cell" style={{ textAlign: 'left' }}>{row.createdAt}</td>
+                <td><span className={tagClass(row.category)}>{row.category}</span></td>
+                <td>{row.calcType === 'weight-based' ? 'Weight-based' : 'BSA-based'}</td>
+                <td className="num-cell">{row.result}</td>
               </tr>
             ))}
           </tbody>

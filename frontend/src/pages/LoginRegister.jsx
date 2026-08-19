@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function LoginRegister() {
   const { login, register } = useAuth();
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,41 +27,62 @@ export default function LoginRegister() {
   }
 
   return (
-    <div style={{ maxWidth: 360, margin: '4rem auto', fontFamily: 'sans-serif' }}>
-      <h1>Dose Calculator</h1>
-      <div style={{ marginBottom: '1rem' }}>
-        <button onClick={() => setMode('login')} disabled={mode === 'login'}>
-          Log in
-        </button>
-        <button onClick={() => setMode('register')} disabled={mode === 'register'} style={{ marginLeft: '0.5rem' }}>
-          Register
-        </button>
+    <div className="auth-shell">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <h1>Dose Calculator</h1>
+          <p>Weight- and BSA-based dosing, calculated and shown step by step.</p>
+        </div>
+
+        <div className="auth-mode-switch" role="tablist">
+          <button role="tab" aria-pressed={mode === 'login'} onClick={() => { setMode('login'); setError(''); }}>
+            Log in
+          </button>
+          <button role="tab" aria-pressed={mode === 'register'} onClick={() => { setMode('register'); setError(''); }}>
+            Register
+          </button>
+        </div>
+
+        <div className="card">
+          <form onSubmit={handleSubmit}>
+            <label className="field">
+              <span className="field-label">Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@hospital.org"
+                required
+              />
+            </label>
+
+            <label className="field">
+              <span className="field-label">Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={mode === 'register' ? 8 : undefined}
+              />
+              {mode === 'register' && <span className="field-hint">Minimum 8 characters.</span>}
+            </label>
+
+            {error && (
+              <div className="alert alert-error" role="alert">
+                <p>{error}</p>
+              </div>
+            )}
+
+            <div className="btn-row">
+              <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%' }}>
+                {loading ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-
-      <form onSubmit={handleSubmit}>
-        <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ display: 'block', width: '100%' }} />
-        </label>
-        <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={mode === 'register' ? 8 : undefined}
-            style={{ display: 'block', width: '100%' }}
-          />
-        </label>
-        {mode === 'register' && <p style={{ fontSize: '0.85rem', color: '#555' }}>Minimum 8 characters.</p>}
-
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-
-        <button type="submit" disabled={loading}>
-          {loading ? 'Please wait...' : mode === 'login' ? 'Log in' : 'Register'}
-        </button>
-      </form>
     </div>
   );
 }
