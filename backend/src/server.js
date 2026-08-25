@@ -1,51 +1,65 @@
-require('dotenv').config();
+// src/server.js
+// Entry point. Wires up sessions (NFR9), CORS (frontend runs on a separate
+// Vite dev server / origin), and API routes.
 
+require('dotenv').config({ quiet: true });
 const express = require('express');
+const session = require('express-session');
 const cors = require('cors');
 
-const { createDb } = require('./db');
-const { seedAdmin } = require('./seedAdmin');
-const { createAuthRouter } = require('./routes/auth');
-const { createCalculateRouter } = require('./routes/calculate');
-const { createHistoryRouter } = require('./routes/history');
-const { createReportsRouter } = require('./routes/reports');
+require('./db'); // ensures schema + admin seed (FR15) run on start-up
 
-/**
- * Builds the Express app. Accepts an optional dbPath override so tests
- * can pass ':memory:' instead of writing to the real database file.
- */
-function createApp(dbPath) {
-  const db = createDb(dbPath);
-  const app = express();
+const authRoutes = require('./routes/auth');
+const calcRoutes = require('./routes/calc');
+const reportRoutes = require('./routes/reports');
 
-  app.use(cors());
-  app.use(express.json());
+const app = express();
+const PORT = process.env.PORT || 3000;
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // NFR9: 15 minutes of inactivity
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
-  // Expose the sliding-expiry refreshed token (NFR9) to browser clients.
-  app.use(cors({ exposedHeaders: ['X-Refreshed-Token'] }));
+app.use(
+  cors({
+    origin: CLIENT_ORIGIN,
+    credentials: true, // required so the session cookie is sent cross-origin
+  })
+);
 
-  app.use('/api/auth', createAuthRouter(db));
-  app.use('/api/calculate', createCalculateRouter(db));
-  app.use('/api/history', createHistoryRouter(db));
-  app.use('/api/reports', createReportsRouter(db));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-  // NFR12 — clear error rather than failing silently on unexpected errors
-  app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).json({ errors: ['An unexpected error occurred. Please try again.'] });
-  });
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'change-this-secret-in-.env',
+    resave: false,
+    saveUninitialized: false,
+    rolling: true, // NFR9: sliding expiry, refreshed on each request
+    cookie: {
+      maxAge: SESSION_TIMEOUT_MS,
+      httpOnly: true,
+      sameSite: 'lax',
+      // secure: true, // enable once served over HTTPS in production
+    },
+  })
+);
 
-  return { app, db };
-}
+// --- API routes ---------------------------------------------------------
+app.use('/auth', authRoutes);
+app.use('/calc', calcRoutes);
+app.use('/reports', reportRoutes);
 
-if (require.main === module) {
-  const { app, db } = createApp();
-  seedAdmin(db).catch((err) => console.error('Failed to seed admin account:', err));
+// --- NFR12: never fail silently - always return a clear error message --
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found.' });
+});
 
-  const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => {
-    console.log(`Dose calculation API listening on port ${PORT}`);
-  });
-}
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Something went wrong on the server. Please try again.' });
+});
 
-module.exports = { createApp };
+app.listen(PORT, () => {
+  console.log(`Dose-calculation API running at http://localhost:${PORT}`);
+  console.log(`Accepting requests from client origin: ${CLIENT_ORIGIN}`);
+});

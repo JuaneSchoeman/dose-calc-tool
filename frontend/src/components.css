@@ -1,131 +1,107 @@
-/* ==========================================================================
-   Layout shell
-   ========================================================================== */
+/* components.css
+   Reusable component styles, built on tokens.css. Implements the UI Design
+   Guidelines: labels above fields, stacked radio/checkbox groups, consistent
+   button styling, clearly-marked required fields, sortable/labelled tables.
+*/
 
-.app-shell {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
-}
-
+/* --- Navigation --------------------------------------------------------- */
 .app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.75rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.app-header h1 {
-  font-size: 1.5rem;
-}
-
-.app-header .subtitle {
-  color: var(--color-ink-muted);
-  font-size: 0.875rem;
-  margin-top: 0.15rem;
-}
-
-.session-info {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--color-ink-muted);
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-.role-badge {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent-soft);
+.brand {
+  font-weight: 600;
+  font-size: var(--font-size-md);
   color: var(--color-primary);
 }
 
-/* ==========================================================================
-   Navigation tabs
-   ========================================================================== */
-
-.tab-nav {
+.app-nav {
   display: flex;
-  gap: 0.25rem;
-  margin-bottom: 1.75rem;
-  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
-.tab-nav button {
-  background: none;
-  border: none;
-  padding: 0.6rem 0.9rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--color-ink-muted);
+.app-nav a,
+.app-nav button {
+  font: inherit;
+  text-decoration: none;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: var(--radius);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.app-nav a:hover,
+.app-nav button:hover {
+  background: var(--color-bg);
+}
+.app-nav a.active {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+}
+.session-email {
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+  margin-right: var(--space-1);
 }
 
-.tab-nav button:hover:not(:disabled) {
-  color: var(--color-ink);
-}
-
-.tab-nav button:disabled {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-  cursor: default;
-}
-
-/* ==========================================================================
-   Cards
-   ========================================================================== */
-
+/* --- Cards / layout ------------------------------------------------------ */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
-.card + .card {
-  margin-top: 1.25rem;
+.subtitle {
+  color: var(--color-muted);
+  margin-top: 0;
+  margin-bottom: var(--space-5);
 }
 
-.card h2 {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-}
-
-/* ==========================================================================
-   Forms
-   ========================================================================== */
-
-.field {
-  display: block;
-  margin-bottom: 1rem;
-}
-
-.field-label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--color-ink-muted);
-  margin-bottom: 0.35rem;
-}
-
-.field-row {
+/* --- Forms: top-to-bottom sequencing, labels above fields ---------------- */
+form {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
-.field-row .field {
-  flex: 1;
-  margin-bottom: 0;
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-group.grouped {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  gap: 14px;
+  background: #fbfcfd;
+}
+
+label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.required-tag {
+  color: var(--color-error);
+  margin-left: 2px;
+}
+.optional-tag {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
 }
 
 input[type='text'],
@@ -134,352 +110,290 @@ input[type='password'],
 input[type='number'],
 input[type='date'],
 select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
   width: 100%;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-size: 0.9rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
 input:focus,
 select:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-soft);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
 }
 
-input::placeholder {
-  color: var(--color-ink-faint);
+.help-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+  margin: 0;
 }
-
-.unit-select {
-  width: auto;
-  flex: 0 0 72px;
-}
-
-.field-hint {
-  font-size: 0.78rem;
-  color: var(--color-ink-faint);
-  margin-top: 0.3rem;
-}
-
-/* ==========================================================================
-   Buttons
-   ========================================================================== */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.1rem;
-  font-size: 0.88rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-}
-
-.btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  border-color: var(--color-border-strong);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--color-surface-sunken);
-}
-
-.btn-text {
-  background: none;
-  border: none;
-  color: var(--color-ink-muted);
-  padding: 0.4rem 0.6rem;
-}
-
-.btn-text:hover {
-  color: var(--color-ink);
-}
-
-.btn-row {
-  display: flex;
-  gap: 0.6rem;
-  margin-top: 1.4rem;
-}
-
-/* ==========================================================================
-   Alerts (errors / validation)
-   ========================================================================== */
-
-.alert {
-  border-radius: var(--radius-sm);
-  padding: 0.75rem 0.9rem;
-  font-size: 0.85rem;
-  margin-top: 1rem;
-}
-
-.alert-error {
-  background: var(--color-error-soft);
+.field-error {
+  font-size: var(--font-size-sm);
   color: var(--color-error);
-  border: 1px solid rgba(166, 54, 43, 0.2);
-}
-
-.alert p {
+  min-height: 1.1em;
   margin: 0;
 }
 
-.alert p + p {
-  margin-top: 0.25rem;
-}
-
-/* ==========================================================================
-   Category tags
-   ========================================================================== */
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.tag-Adult-Medical\/Surgical { background: var(--cat-adult-soft); color: var(--cat-adult); }
-.tag-Oncology { background: var(--cat-oncology-soft); color: var(--cat-oncology); }
-.tag-Outpatient\/Ambulatory { background: var(--cat-outpatient-soft); color: var(--cat-outpatient); }
-.tag-ICU { background: var(--cat-icu-soft); color: var(--cat-icu); }
-.tag-Emergency { background: var(--cat-emergency-soft); color: var(--cat-emergency); }
-.tag-Paediatrics { background: var(--cat-paediatrics-soft); color: var(--cat-paediatrics); }
-
-/* ==========================================================================
-   Calculation ledger — the signature element (FR9)
-   A connected vertical trace of each arithmetic step, styled like a
-   worksheet annotation, ending in an emphasized result chip.
-   ========================================================================== */
-
-.ledger {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px dashed var(--color-border-strong);
-}
-
-.ledger-heading {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-ink-muted);
-  margin-bottom: 0.9rem;
-}
-
-.ledger-steps {
-  position: relative;
-  margin-left: 0.6rem;
-  padding-left: 1.1rem;
-  border-left: 2px solid var(--color-border);
-}
-
-.ledger-step {
-  position: relative;
-  padding-bottom: 1rem;
-}
-
-.ledger-step:last-child {
-  padding-bottom: 0;
-}
-
-.ledger-step::before {
-  content: '';
-  position: absolute;
-  left: -1.46rem;
-  top: 0.35rem;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  border: 2px solid var(--color-surface);
-  box-shadow: 0 0 0 1px var(--color-border-strong);
-}
-
-.ledger-step-label {
-  font-size: 0.85rem;
-  color: var(--color-ink);
-}
-
-.ledger-step-value {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--color-ink-muted);
-  margin-top: 0.15rem;
-}
-
-.result-chip {
-  margin-top: 1.1rem;
+.input-with-unit {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  background: var(--color-accent-soft);
-  border: 1px solid rgba(46, 125, 107, 0.25);
-  border-radius: var(--radius-md);
-  padding: 0.9rem 1.1rem;
+  gap: 10px;
+  align-items: flex-start;
+}
+.input-with-unit input {
+  flex: 1 1 auto;
+}
+.input-with-unit .unit-choice {
+  flex: 0 0 auto;
 }
 
-.result-chip-label {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--color-primary);
+/* --- Radio / checkbox groups: stacked vertically -------------------------- */
+.choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-
-.result-chip-value {
-  font-family: var(--font-mono);
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-primary);
+.choice-group.horizontal-compact {
+  flex-direction: row;
+  gap: var(--space-4);
 }
-
-/* ==========================================================================
-   Tables (history, reports)
-   ========================================================================== */
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.86rem;
-}
-
-.data-table th {
-  text-align: left;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-ink-muted);
-  padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid var(--color-border-strong);
-}
-
-.data-table td {
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.data-table tr:last-child td {
-  border-bottom: none;
-}
-
-.data-table td.num-cell {
-  text-align: right;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2.5rem 1rem;
-  color: var(--color-ink-muted);
-}
-
-.empty-state-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
-}
-
-/* ==========================================================================
-   Auth screen
-   ========================================================================== */
-
-.auth-shell {
-  min-height: 100%;
+.choice-option {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 2rem 1.25rem;
+  gap: var(--space-2);
 }
-
-.auth-card {
-  width: 100%;
-  max-width: 380px;
+.choice-option input {
+  width: auto;
 }
-
-.auth-brand {
-  text-align: center;
-  margin-bottom: 1.75rem;
-}
-
-.auth-brand h1 {
-  font-size: 1.4rem;
-}
-
-.auth-brand p {
-  color: var(--color-ink-muted);
-  font-size: 0.85rem;
-  margin-top: 0.3rem;
-}
-
-.auth-mode-switch {
-  display: flex;
-  background: var(--color-surface-sunken);
-  border-radius: var(--radius-sm);
-  padding: 0.2rem;
-  margin-bottom: 1.5rem;
-}
-
-.auth-mode-switch button {
-  flex: 1;
-  background: none;
-  border: none;
-  padding: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border-radius: calc(var(--radius-sm) - 2px);
-  color: var(--color-ink-muted);
+.choice-option label {
+  font-weight: 400;
   cursor: pointer;
 }
 
-.auth-mode-switch button[aria-pressed='true'] {
-  background: var(--color-surface);
+/* --- Buttons: consistent style ------------------------------------------- */
+button,
+.btn {
+  font: inherit;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover,
+.btn:hover {
+  background: var(--color-primary-hover);
+}
+button.secondary {
+  background: transparent;
   color: var(--color-primary);
-  box-shadow: var(--shadow-card);
+}
+button.secondary:hover {
+  background: var(--color-bg);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* ==========================================================================
-   Responsive
-   ========================================================================== */
+/* --- Alerts --------------------------------------------------------------- */
+.alert {
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+.alert-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+.alert-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
 
-@media (max-width: 480px) {
-  .app-shell {
-    padding: 1.25rem 1rem 3rem;
+/* --- Progress steps (multi-step form indicator) ---------------------------- */
+.progress-steps {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+.progress-step {
+  flex: 1 1 0;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+}
+.progress-step.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.progress-step.done {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+/* --- Calculation step breakdown (FR9) ---------------------------------------- */
+.calc-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.calc-steps li {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+.calc-result {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-success-bg);
+  border-radius: var(--radius);
+  border: 1px solid #c9e2d3;
+}
+.calc-result .result-value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+/* --- Tables: history / reports (sortable, clearly labelled - NFR13) --------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+th {
+  cursor: pointer;
+  user-select: none;
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sort-indicator {
+  font-size: 0.75rem;
+  margin-left: 4px;
+  color: var(--color-muted);
+}
+tbody tr:hover {
+  background: var(--color-bg);
+}
+.table-scroll {
+  overflow-x: auto;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 720px) {
+  .report-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.filter-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.filter-row .field-group {
+  flex: 1 1 160px;
+}
+
+.app-footer {
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  padding: var(--space-5);
+}
+
+/* --- Printing (reports, history) ------------------------------------------ */
+.print-header {
+  display: none;
+}
+
+@media print {
+  /* Hide interactive chrome that has no meaning on paper */
+  .app-header,
+  .app-footer,
+  .filter-row,
+  .btn-row,
+  .no-print,
+  button {
+    display: none !important;
   }
 
-  .field-row {
-    flex-direction: column;
-    gap: 1rem;
+  body {
+    background: #fff;
   }
 
-  .unit-select {
-    flex: 1;
-    width: 100%;
+  .card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 28px;
   }
 
-  .result-chip-value {
-    font-size: 1.25rem;
+  .page-container,
+  .page-container.wide {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .report-grid {
+    display: block;
+  }
+
+  .print-header {
+    display: block;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--color-text);
+    padding-bottom: 8px;
+  }
+  .print-header h1 {
+    margin-bottom: 2px;
+  }
+  .print-header .print-meta {
+    color: var(--color-muted);
+    font-size: 0.85rem;
+  }
+
+  table {
+    font-size: 0.85rem;
+  }
+  tr {
+    break-inside: avoid;
+  }
+  .table-scroll {
+    overflow: visible;
   }
 }

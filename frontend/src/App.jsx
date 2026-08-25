@@ -1,53 +1,63 @@
-import { useState } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import LoginRegister from './pages/LoginRegister';
-import Calculator from './pages/Calculator';
-import History from './pages/History';
-import Reports from './pages/Reports';
+// src/App.jsx - top-level layout and route table.
 
-function AuthenticatedApp() {
-  const { user, logout } = useAuth();
-  const [tab, setTab] = useState('calculator');
+import { Routes, Route, Navigate } from 'react-router-dom';
+import NavBar from './NavBar';
+import ProtectedRoute from './ProtectedRoute';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import CalculatorPage from './pages/CalculatorPage';
+import ConverterPage from './pages/ConverterPage';
+import HistoryPage from './pages/HistoryPage';
+import ReportsPage from './pages/ReportsPage';
+import './App.css';
 
+function App() {
   return (
     <div className="app-shell">
-      <div className="app-header">
-        <div>
-          <h1>Dose Calculator</h1>
-          <div className="subtitle">Weight- and BSA-based dosing, calculated and shown step by step.</div>
-        </div>
-        <div className="session-info">
-          <span>{user.email}</span>
-          <span className="role-badge">{user.role}</span>
-          <button className="btn-text" onClick={logout}>Log out</button>
-        </div>
+      <NavBar />
+      <div className="app-main">
+        <Routes>
+          <Route path="/" element={<Navigate to="/calculator" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/calculator"
+            element={
+              <ProtectedRoute>
+                <CalculatorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/converter"
+            element={
+              <ProtectedRoute>
+                <ConverterPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute adminOnly>
+                <ReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/calculator" replace />} />
+        </Routes>
       </div>
-
-      <nav className="tab-nav">
-        <button onClick={() => setTab('calculator')} disabled={tab === 'calculator'}>Calculator</button>
-        <button onClick={() => setTab('history')} disabled={tab === 'history'}>My history</button>
-        {user.role === 'admin' && (
-          <button onClick={() => setTab('reports')} disabled={tab === 'reports'}>Reports</button>
-        )}
-      </nav>
-
-      {tab === 'calculator' && <Calculator />}
-      {tab === 'history' && <History />}
-      {tab === 'reports' && user.role === 'admin' && <Reports />}
+      <footer className="app-footer">ITRI671 - Dose Calculation Artefact. Not for clinical use.</footer>
     </div>
   );
 }
 
-function AppShell() {
-  const { token, user } = useAuth();
-  if (!token || !user) return <LoginRegister />;
-  return <AuthenticatedApp />;
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
-  );
-}
+export default App;

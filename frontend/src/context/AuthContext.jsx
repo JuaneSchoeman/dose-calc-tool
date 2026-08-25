@@ -1,88 +1,55 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+// src/context/AuthContext.jsx
+// Holds the current session (logged-in user) and exposes login/register/
+// logout actions. FR1 (register), FR2 (login/logout).
 
-const API_BASE = 'http://localhost:4000/api';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { apiFetch } from '../api';
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => sessionStorage.getItem('token'));
-  const [user, setUser] = useState(() => {
-    const stored = sessionStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  function persistSession(newToken, newUser) {
-    setToken(newToken);
-    setUser(newUser);
-    sessionStorage.setItem('token', newToken);
-    sessionStorage.setItem('user', JSON.stringify(newUser));
-  }
+  const refreshSession = useCallback(async () => {
+    try {
+      const { user: sessionUser } = await apiFetch('/auth/me');
+      setUser(sessionUser);
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  function logout() {
-    setToken(null);
+  useEffect(() => {
+    refreshSession();
+  }, [refreshSession]);
+
+  const login = useCallback(async (identifierNumber, password) => {
+    const { user: loggedInUser } = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifierNumber, password }),
+    });
+    setUser(loggedInUser);
+    return loggedInUser;
+  }, []);
+
+  const register = useCallback(async (identifierNumber, password, confirmPassword, email) => {
+    return apiFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ identifierNumber, password, confirmPassword, email: email || undefined }),
+    });
+  }, []);
+
+  const logout = useCallback(async () => {
+    await apiFetch('/auth/logout', { method: 'POST' });
     setUser(null);
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user');
-  }
+  }, []);
 
-  async function register(email, password) {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.errors?.[0] || 'Registration failed.');
-    persistSession(data.token, data.user);
-  }
+  const value = { user, loading, login, register, logout, refreshSession };
 
-  async function login(email, password) {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.errors?.[0] || 'Login failed.');
-    persistSession(data.token, data.user);
-  }
-
-  /**
-   * Wrapper around fetch that attaches the auth token and applies the
-   * NFR9 sliding-expiry refresh: every authenticated response carries a
-   * fresh token in the X-Refreshed-Token header, which we store so the
-   * session only times out after real inactivity.
-   */
-  const authFetch = useCallback(
-    async (path, options = {}) => {
-      const res = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options.headers || {}),
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const refreshed = res.headers.get('X-Refreshed-Token');
-      if (refreshed) {
-        setToken(refreshed);
-        sessionStorage.setItem('token', refreshed);
-      }
-
-      if (res.status === 401) {
-        logout();
-      }
-
-      return res;
-    },
-    [token]
-  );
-
-  return (
-    <AuthContext.Provider value={{ token, user, login, register, logout, authFetch }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

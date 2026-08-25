@@ -1,73 +1,104 @@
-/**
- * Authentication routes — FR1 (register) and FR2 (login).
- *
- * Registration always creates a 'user' role account. Administrator
- * accounts are never created through this public endpoint — the only
- * way to obtain one is the FR15 seeding process at server start-up.
- * This is a deliberate security decision: letting a client-supplied
- * 'role' field control privilege would let anyone register as admin.
- */
+// routes/auth.js
+// FR1: Register user account
+// FR2: Authenticate user (login) / logout
+//
+// Login credential is a professional identifying number (e.g. SANC
+// registration number for nurses, SAPC registration number for
+// pharmacists) rather than an email address. Email is stored only as an
+// optional extra field and is never used for authentication.
 
 const express = require('express');
-const { hashPassword, verifyPassword, issueToken } = require('../auth');
+const bcrypt = require('bcryptjs');
+const db = require('../db');
 
-function createAuthRouter(db) {
-  const router = express.Router();
+const router = express.Router();
 
-  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Alphanumeric, optionally with hyphens/slashes, 4-20 characters - loose
+// enough to cover both SANC (numeric) and SAPC (alphanumeric) formats.
+const IDENTIFIER_RE = /^[A-Za-z0-9/-]{4,20}$/;
 
-  router.post('/register', async (req, res) => {
-    const { email, password } = req.body;
+// POST /auth/register  (FR1)
+router.post('/register', (req, res) => {
+  const { identifierNumber, email, password, confirmPassword } = req.body;
 
-    if (!email || !EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ errors: ['A valid email address is required.'] });
-    }
-    if (!password || password.length < 8) {
-      return res.status(400).json({ errors: ['Password must be at least 8 characters long.'] });
-    }
+  if (!identifierNumber || !IDENTIFIER_RE.test(identifierNumber.trim())) {
+    return res.status(400).json({
+      error: 'Please provide a valid identifying number (4-20 letters, digits, "-" or "/").',
+    });
+  }
+  if (email && !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Please provide a valid email address, or leave it blank.' });
+  }
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: 'Passwords do not match.' });
+  }
 
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existing) {
-      return res.status(409).json({ errors: ['An account with this email already exists.'] });
-    }
+  const normalisedIdentifier = identifierNumber.trim();
+  const normalisedEmail = email ? email.toLowerCase().trim() : null;
 
-    const passwordHash = await hashPassword(password);
-    const info = db
-      .prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)')
-      .run(email, passwordHash, 'user');
+  const existing = db
+    .prepare('SELECT id FROM users WHERE identifier_number = ?')
+    .get(normalisedIdentifier);
+  if (existing) {
+    return res.status(409).json({ error: 'An account with that identifying number already exists.' });
+  }
 
-    const user = { id: info.lastInsertRowid, email, role: 'user' };
-    const token = issueToken(user);
+  const hash = bcrypt.hashSync(password, 12); // NFR8
+  const info = db
+    .prepare(
+      'INSERT INTO users (identifier_number, email, password_hash, role) VALUES (?, ?, ?, ?)'
+    )
+    .run(normalisedIdentifier, normalisedEmail, hash, 'standard');
 
-    return res.status(201).json({ token, user: { id: user.id, email: user.email, role: user.role } });
+  return res.status(201).json({
+    message: 'Account created. You can now log in.',
+    userId: info.lastInsertRowid,
   });
+});
 
-  router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+// POST /auth/login  (FR2)
+router.post('/login', (req, res) => {
+  const { identifierNumber, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ errors: ['Email and password are required.'] });
-    }
+  if (!identifierNumber || !password) {
+    return res.status(400).json({ error: 'Identifying number and password are required.' });
+  }
 
-    const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  const user = db
+    .prepare('SELECT * FROM users WHERE identifier_number = ?')
+    .get(String(identifierNumber).trim());
 
-    // Deliberately generic error message — does not reveal whether the
-    // email exists, to avoid leaking account information.
-    const invalidCredentials = () =>
-      res.status(401).json({ errors: ['Invalid email or password.'] });
+  const passwordOk = user && bcrypt.compareSync(password, user.password_hash);
 
-    if (!row) return invalidCredentials();
+  if (!passwordOk) {
+    // Deliberately generic message - do not reveal whether the identifier exists.
+    return res.status(401).json({ error: 'Invalid identifying number or password.' });
+  }
 
-    const passwordMatches = await verifyPassword(password, row.password_hash);
-    if (!passwordMatches) return invalidCredentials();
+  req.session.user = {
+    id: user.id,
+    identifierNumber: user.identifier_number,
+    email: user.email,
+    role: user.role,
+  };
+  return res.json({ message: 'Logged in.', user: req.session.user });
+});
 
-    const user = { id: row.id, email: row.email, role: row.role };
-    const token = issueToken(user);
-
-    return res.json({ token, user });
+// POST /auth/logout
+router.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie('connect.sid');
+    res.json({ message: 'Logged out.' });
   });
+});
 
-  return router;
-}
+// GET /auth/me - current session info, used by the frontend to render UI state
+router.get('/me', (req, res) => {
+  res.json({ user: req.session.user || null });
+});
 
-module.exports = { createAuthRouter };
+module.exports = router;

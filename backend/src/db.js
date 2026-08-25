@@ -1,57 +1,86 @@
-/**
- * Database layer — creates/opens the SQLite database and defines the
- * schema for users (FR1, FR15) and calculation history (FR10).
- *
- * Uses better-sqlite3, a synchronous SQLite driver well suited to a
- * project of this scale (NFR6 — no separate database server required).
- *
- * DB_PATH can be overridden via environment variable, primarily so
- * tests can use an in-memory database (':memory:') instead of writing
- * to disk.
- */
+// src/db.js
+// Sets up the SQLite database, creates the schema, and seeds the initial
+// administrator account (FR15) from environment variables at first start-up.
 
-const Database = require('better-sqlite3');
 const path = require('path');
-const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const Database = require('better-sqlite3');
 
-function createDb(dbPath) {
-  const resolvedPath = dbPath || process.env.DB_PATH || path.join(__dirname, '..', 'data', 'dose_calc.db');
+// backend/data/dosecalc.db - data/ sits alongside src/, not inside it.
+const DB_PATH = path.join(__dirname, '..', 'data', 'dosecalc.db');
+const db = new Database(DB_PATH);
 
-  // Ensure the data directory exists (skip for in-memory databases)
-  if (resolvedPath !== ':memory:') {
-    const dir = path.dirname(resolvedPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+// --- Schema -----------------------------------------------------------
+// users: login is by professional identifying number (e.g. SANC number for
+// nurses, SAPC registration number for pharmacists) rather than email.
+// Email is stored only as an optional extra field (e.g. for a future
+// password-reset flow) - it is never required and never used to log in.
+// Still no patient data is stored anywhere (NFR5, NFR8).
+db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  identifier_number TEXT UNIQUE NOT NULL,
+  email             TEXT,
+  password_hash     TEXT NOT NULL,
+  role              TEXT NOT NULL CHECK (role IN ('standard', 'administrator')),
+  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
+// calculations: immutable audit record (NFR10) - no UPDATE/DELETE routes are
+// ever exposed for this table. Stores only user id, category, result and a
+// timestamp - no patient-identifiable information (NFR5, FR10).
+db.exec(`
+CREATE TABLE IF NOT EXISTS calculations (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      INTEGER NOT NULL REFERENCES users(id),
+  category     TEXT NOT NULL,
+  calc_type    TEXT NOT NULL CHECK (calc_type IN ('weight', 'bsa')),
+  weight_kg    REAL,
+  height_cm    REAL,
+  bsa_m2       REAL,
+  dose_per_unit REAL NOT NULL,
+  total_dose   REAL NOT NULL,
+  dose_unit    TEXT NOT NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id);`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_calc_category ON calculations(category);`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_calc_created ON calculations(created_at);`);
+
+// --- FR15: seed initial administrator account --------------------------
+function seedAdmin() {
+  const identifierNumber = process.env.ADMIN_IDENTIFIER_NUMBER;
+  const email = process.env.ADMIN_EMAIL || null; // optional
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!identifierNumber || !password) {
+    console.warn(
+      '[db] ADMIN_IDENTIFIER_NUMBER / ADMIN_PASSWORD not set - skipping admin seed. ' +
+      'Set these in backend/.env to create the first administrator account.'
+    );
+    return;
   }
 
-  const db = new Database(resolvedPath);
-  db.pragma('journal_mode = WAL');
+  const existingAdmin = db
+    .prepare('SELECT id FROM users WHERE role = ?')
+    .get('administrator');
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('user', 'admin')) DEFAULT 'user',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
+  if (existingAdmin) return; // FR15: only seed if none exists
 
-  // NFR10 — calculation history is append-only (no UPDATE/DELETE ever
-  // issued against this table by the application layer).
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS calculations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      category TEXT NOT NULL,
-      calc_type TEXT NOT NULL CHECK (calc_type IN ('weight-based', 'bsa-based')),
-      result REAL NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
+  const hash = bcrypt.hashSync(password, 12);
+  db.prepare(
+    'INSERT INTO users (identifier_number, email, password_hash, role) VALUES (?, ?, ?, ?)'
+  ).run(identifierNumber.trim(), email ? email.toLowerCase().trim() : null, hash, 'administrator');
 
-  return db;
+  console.log(`[db] Seeded initial administrator account (identifier: ${identifierNumber})`);
 }
 
-module.exports = { createDb };
+seedAdmin();
+
+module.exports = db;

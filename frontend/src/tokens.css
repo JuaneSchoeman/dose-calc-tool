@@ -1,116 +1,48 @@
-/* ==========================================================================
-   Design tokens — Dose Calculation Tool
-   A calm, precise, clinical aesthetic: color only ever carries meaning
-   (amber = caution, red = error), numbers are always monospace to read
-   like instrument output, and the step-by-step breakdown is treated as
-   the signature moment of the interface.
-   ========================================================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* tokens.css
+   Design tokens shared across the whole app. Centralising these here means
+   colours, spacing, and radii only need to change in one place (UI
+   guideline: consistent fonts/buttons/spacing across the whole system).
+*/
 
 :root {
-  /* Surfaces */
-  --color-bg: #F5F8F6;
-  --color-surface: #FFFFFF;
-  --color-surface-sunken: #EEF3F0;
+  /* Colour palette - soft, low-stress, minimal distraction */
+  --color-bg: #f6f8fa;
+  --color-surface: #ffffff;
+  --color-border: #dbe2ea;
+  --color-text: #223047;
+  --color-muted: #6b7684;
 
-  /* Text */
-  --color-ink: #16211D;
-  --color-ink-muted: #56675F;
-  --color-ink-faint: #8A978F;
+  --color-primary: #3d6b8c;
+  --color-primary-hover: #2f5570;
+  --color-accent: #6fa88a;
 
-  /* Brand */
-  --color-primary: #1B4B43;
-  --color-primary-hover: #133731;
-  --color-accent: #2E7D6B;
-  --color-accent-soft: #E3EFEA;
+  --color-error: #b3452c;
+  --color-error-bg: #fbeae5;
+  --color-success: #2e6b4a;
+  --color-success-bg: #eaf4ee;
 
-  /* Semantic — used only for their meaning, never decoratively */
-  --color-warn: #B5721F;
-  --color-warn-soft: #FBF0DF;
-  --color-error: #A6362B;
-  --color-error-soft: #FBEAE8;
-  --color-success: #2E7D6B;
-  --color-success-soft: #E3EFEA;
-
-  /* Borders */
-  --color-border: #DCE4DF;
-  --color-border-strong: #C3CFC8;
-
-  /* Category tag colors — muted, distinct, meaningful (not decorative) */
-  --cat-adult: #3D5A80;
-  --cat-adult-soft: #E7ECF3;
-  --cat-oncology: #6B4E71;
-  --cat-oncology-soft: #EFE7F0;
-  --cat-outpatient: #2E7D6B;
-  --cat-outpatient-soft: #E3EFEA;
-  --cat-icu: #A6532A;
-  --cat-icu-soft: #F5E9E0;
-  --cat-emergency: #A6362B;
-  --cat-emergency-soft: #FBEAE8;
-  --cat-paediatrics: #B5721F;
-  --cat-paediatrics-soft: #FBF0DF;
-
-  /* Type */
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  /* Radius / shadow */
+  /* Shape */
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --shadow-card: 0 1px 2px rgba(22, 33, 29, 0.04), 0 4px 16px rgba(22, 33, 29, 0.06);
-}
+  --radius: 10px;
+  --radius-lg: 14px;
 
-* {
-  box-sizing: border-box;
-}
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
 
-html, body, #root {
-  height: 100%;
-}
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-size-sm: 0.82rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.05rem;
+  --font-size-lg: 1.4rem;
+  --font-size-xl: 1.6rem;
 
-body {
-  margin: 0;
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 0;
-  color: var(--color-ink);
-}
-
-/* Numbers read like instrument output, everywhere */
-.num, input[type='number'], .step-value, .result-value, td.num-cell {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-button {
-  font-family: var(--font-body);
-}
-
-/* Visible keyboard focus — accessibility floor */
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  /* Layout */
+  --max-width-form: 640px;
+  --max-width-wide: 880px;
 }
