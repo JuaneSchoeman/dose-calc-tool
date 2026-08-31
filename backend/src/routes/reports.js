@@ -19,6 +19,68 @@ function parseDateRange(req, res) {
   return { from: `${from} 00:00:00`, to: `${to} 23:59:59` };
 }
 
+// GET /reports/users - list of registered users, for filter dropdowns
+router.get('/users', requireAdmin, (req, res) => {
+  const rows = db
+    .prepare('SELECT identifier_number FROM users ORDER BY identifier_number')
+    .all();
+  res.json({ users: rows.map((r) => r.identifier_number) });
+});
+
+// GET /reports/detailed?from&to&identifierNumber?&category?&calcType?
+// A filterable, per-calculation report (not just aggregate counts) that can
+// be scoped to a specific user, clinical department/category, and/or
+// calculation type - in addition to the required date range. Intended to be
+// printed as a targeted record (e.g. "all of nurse X's calculations this
+// month", or "all Oncology BSA calculations last quarter").
+router.get('/detailed', requireAdmin, (req, res) => {
+  const range = parseDateRange(req, res);
+  if (!range) return;
+
+  const { identifierNumber, category, calcType } = req.query;
+
+  const conditions = ['c.created_at BETWEEN ? AND ?'];
+  const params = [range.from, range.to];
+
+  if (identifierNumber) {
+    conditions.push('u.identifier_number = ?');
+    params.push(identifierNumber);
+  }
+  if (category) {
+    conditions.push('c.category = ?');
+    params.push(category);
+  }
+  if (calcType) {
+    if (!['weight', 'bsa'].includes(calcType)) {
+      return res.status(400).json({ error: 'calcType must be "weight" or "bsa".' });
+    }
+    conditions.push('c.calc_type = ?');
+    params.push(calcType);
+  }
+
+  const rows = db
+    .prepare(
+      `SELECT c.id, c.created_at, u.identifier_number, c.category, c.calc_type,
+              c.weight_kg, c.height_cm, c.bsa_m2, c.total_dose, c.dose_unit
+       FROM calculations c
+       JOIN users u ON u.id = c.user_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY c.created_at DESC`
+    )
+    .all(...params);
+
+  res.json({
+    from: req.query.from,
+    to: req.query.to,
+    filters: {
+      identifierNumber: identifierNumber || null,
+      category: category || null,
+      calcType: calcType || null,
+    },
+    report: rows,
+  });
+});
+
 // GET /reports/by-category?from=YYYY-MM-DD&to=YYYY-MM-DD  (FR13)
 router.get('/by-category', requireAdmin, (req, res) => {
   const range = parseDateRange(req, res);

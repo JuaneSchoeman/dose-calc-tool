@@ -103,12 +103,12 @@ function calculateBSA(weightKg, heightCm) {
  */
 function calculateBsaDose(weightKg, heightCm, dosePerM2) {
   const bsa = calculateBSA(weightKg, heightCm);
-  const totalDose = round(bsa * dosePerM2, 4);
+  const totalDose = round((bsa/1.73) * dosePerM2, 4);
 
   const steps = [
     `Step 1 - Convert / confirm inputs: weight = ${weightKg} kg, height = ${heightCm} cm.`,
     `Step 2 - Apply the Mosteller formula: BSA = sqrt((height_cm x weight_kg) / 3600) = sqrt((${heightCm} x ${weightKg}) / 3600) = ${bsa} m^2.`,
-    `Step 3 - Apply the dose formula: total dose = BSA x dose per m^2 = ${bsa} x ${dosePerM2} = ${totalDose}.`,
+    `Step 3 - Apply the dose formula: total dose = (BSA / 1.73) x dose per m^2 = (${bsa} / 1.73) x ${dosePerM2} = ${totalDose}.`,
   ];
 
   return { bsa, totalDose, steps };

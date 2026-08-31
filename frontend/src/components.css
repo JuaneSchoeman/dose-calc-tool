@@ -325,7 +325,12 @@ tbody tr:hover {
   margin-bottom: var(--space-4);
 }
 .filter-row .field-group {
-  flex: 1 1 160px;
+  flex: 0 1 200px;
+}
+.filter-row input[type='date'],
+.filter-row select {
+  width: auto;
+  min-width: 160px;
 }
 
 .app-footer {
@@ -395,5 +400,22 @@ tbody tr:hover {
   }
   .table-scroll {
     overflow: visible;
+  }
+
+  /* Selective printing: when a specific report was requested via one of the
+     "Print this report" buttons, hide the other report sections so only the
+     chosen one appears on paper. Default (no data-print-target, or "all")
+     prints everything. */
+  body[data-print-target='category'] .print-only-user,
+  body[data-print-target='category'] .print-only-detailed {
+    display: none !important;
+  }
+  body[data-print-target='user'] .print-only-category,
+  body[data-print-target='user'] .print-only-detailed {
+    display: none !important;
+  }
+  body[data-print-target='detailed'] .print-only-category,
+  body[data-print-target='detailed'] .print-only-user {
+    display: none !important;
   }
 }
