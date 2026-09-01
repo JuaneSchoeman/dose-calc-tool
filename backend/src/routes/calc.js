@@ -37,6 +37,19 @@ router.get('/mass-units', requireLogin, (req, res) => {
   res.json({ units });
 });
 
+// GET /calc/dose-units - restricted list of units for the "Prescribed dose"
+// picker on the dose calculator. Deliberately narrower than /mass-units:
+// see the DOSE_MASS_UNITS comment in calculations.js for why kg/lb/cg/dg
+// are excluded here even though they're valid options in the general
+// mass converter.
+router.get('/dose-units', requireLogin, (req, res) => {
+  const units = calc.DOSE_MASS_UNITS.map((key) => ({
+    key,
+    label: calc.MASS_UNIT_LABELS[key],
+  }));
+  res.json({ units });
+});
+
 // POST /calc/convert-mass - standalone unit conversion, independent of any
 // patient calculation. Not written to the audit history table, since it is
 // a general-purpose utility rather than a dose calculation.
@@ -60,6 +73,63 @@ router.post('/convert-mass', requireLogin, (req, res) => {
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
+});
+
+// GET /calc/length-units - list of supported length/height units for the
+// standalone height converter.
+router.get('/length-units', requireLogin, (req, res) => {
+  const units = Object.keys(calc.LENGTH_UNITS_TO_CM).map((key) => ({
+    key,
+    label: calc.LENGTH_UNIT_LABELS[key],
+  }));
+  res.json({ units });
+});
+
+// POST /calc/convert-length - standalone height/length conversion,
+// independent of the BSA calculators. Not written to the audit history
+// table, for the same reason as /convert-mass above.
+// body: { value, fromUnit, toUnit }
+router.post('/convert-length', requireLogin, (req, res) => {
+  const { value, fromUnit, toUnit } = req.body;
+
+  if (value === undefined || value === null || value === '' || Number.isNaN(Number(value))) {
+    return res.status(400).json({ error: 'Please enter a numeric value to convert.' });
+  }
+  if (Number(value) < 0) {
+    return res.status(400).json({ error: 'Value must not be negative.' });
+  }
+  if (!calc.LENGTH_UNITS_TO_CM[fromUnit] || !calc.LENGTH_UNITS_TO_CM[toUnit]) {
+    return res.status(400).json({ error: 'Please select valid units to convert between.' });
+  }
+
+  try {
+    const result = calc.convertLength(Number(value), fromUnit, toUnit);
+    return res.json({ value: Number(value), fromUnit, toUnit, result });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+// POST /calc/bsa-only - standalone BSA calculator (Mosteller formula),
+// deliberately separate from the BSA-based dose calculator in /calculate
+// below. Returns BSA only, with no dose-per-m² input required. Like the
+// converters above, this is a general-purpose utility and is not written
+// to the audit history table.
+// body: { weightValue, weightUnit, heightValue, heightUnit }
+router.post('/bsa-only', requireLogin, (req, res) => {
+  const { weightValue, weightUnit, heightValue, heightUnit } = req.body;
+
+  const weightRangeKey = weightUnit === 'lb' ? 'weightLb' : 'weightKg';
+  const weightCheck = calc.validateNumber(weightValue, weightRangeKey);
+  if (!weightCheck.valid) return res.status(400).json({ error: weightCheck.message });
+
+  const weightKg = calc.normaliseWeightToKg(weightValue, weightUnit);
+  const heightCm = calc.normaliseHeightToCm(heightValue, heightUnit);
+  const heightCheck = calc.validateNumber(heightCm, 'heightCm');
+  if (!heightCheck.valid) return res.status(400).json({ error: heightCheck.message });
+
+  const { bsa, steps } = calc.calculateBsaOnly(weightKg, heightCm);
+  return res.json({ weightKg, heightCm, bsa, steps });
 });
 
 // POST /calc/validate - real-time, per-field validation used by the frontend

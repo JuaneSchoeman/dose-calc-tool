@@ -112,6 +112,21 @@ function calculateBsaDose(weightKg, heightCm, dosePerM2) {
   const totalDose = round((bsa / STANDARD_BSA_M2) * dosePerM2, 4);
 
   const steps = [
+    ...buildBsaCoreSteps(weightKg, heightCm, bsa),
+    {
+      title: 'Step 3 — Apply the dose formula',
+      formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × dose per m² = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
+      latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{dose per m}^2 = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
+    },
+  ];
+
+  return { bsa, totalDose, steps };
+}
+
+// Shared by calculateBsaDose and calculateBsaOnly, so the two step
+// breakdowns stay word-for-word consistent wherever BSA itself is derived.
+function buildBsaCoreSteps(weightKg, heightCm, bsa) {
+  return [
     {
       title: 'Step 1 — Confirm inputs',
       formula: `weight = ${weightKg} kg, height = ${heightCm} cm`,
@@ -122,14 +137,23 @@ function calculateBsaDose(weightKg, heightCm, dosePerM2) {
       formula: `BSA = √(height × weight ÷ 3600) = √(${heightCm} × ${weightKg} ÷ 3600) = ${bsa} m²`,
       latex: `\\text{BSA} = \\sqrt{\\dfrac{\\text{height} \\times \\text{weight}}{3600}} = \\sqrt{\\dfrac{${heightCm} \\times ${weightKg}}{3600}} = ${bsa}\\ \\text{m}^2`,
     },
-    {
-      title: 'Step 3 — Apply the dose formula',
-      formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × dose per m² = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
-      latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{dose per m}^2 = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
-    },
   ];
+}
 
-  return { bsa, totalDose, steps };
+// --- Standalone BSA calculator -----------------------------------------
+// Computes body surface area only - deliberately NOT wired into the
+// weight-/BSA-dose calculators above. This lets a clinician or student look
+// up a patient's BSA on its own (e.g. to sanity-check a chart value) without
+// needing to enter a dose-per-m² figure the way the BSA-dose calculator
+// requires.
+/**
+ * @param {number} weightKg
+ * @param {number} heightCm
+ * @returns {{ bsa: number, steps: object[] }}
+ */
+function calculateBsaOnly(weightKg, heightCm) {
+  const bsa = calculateBSA(weightKg, heightCm);
+  return { bsa, steps: buildBsaCoreSteps(weightKg, heightCm, bsa) };
 }
 
 // --- FR7: weight-based dose ------------------------------------------
@@ -174,7 +198,9 @@ function round(value, decimals) {
 const MASS_UNITS_TO_GRAMS = {
   mcg: 0.000001, // microgram
   mg: 0.001, // milligram
+  cg: 0.01, // centigram
   g: 1, // gram
+  dg: 10, // decagram
   kg: 1000, // kilogram
   lb: 453.59237, // pound (avoirdupois)
 };
@@ -182,7 +208,9 @@ const MASS_UNITS_TO_GRAMS = {
 const MASS_UNIT_LABELS = {
   mcg: 'mcg (microgram)',
   mg: 'mg (milligram)',
+  cg: 'cg (centigram)',
   g: 'g (gram)',
+  dg: 'dg (decagram)',
   kg: 'kg (kilogram)',
   lb: 'lb (pound)',
 };
@@ -190,8 +218,8 @@ const MASS_UNIT_LABELS = {
 /**
  * Convert a mass value between any two supported units.
  * @param {number} value
- * @param {'mcg'|'mg'|'g'|'kg'|'lb'} fromUnit
- * @param {'mcg'|'mg'|'g'|'kg'|'lb'} toUnit
+ * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'kg'|'lb'} fromUnit
+ * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'kg'|'lb'} toUnit
  * @returns {number}
  */
 function convertMass(value, fromUnit, toUnit) {
@@ -202,9 +230,63 @@ function convertMass(value, fromUnit, toUnit) {
   }
   const grams = Number(value) * fromFactor;
   const converted = grams / toFactor;
-  // More decimal places for very small target units (mcg) so small
+  // More decimal places for very small target units (mcg, cg) so small
   // quantities don't round away to zero; fewer for larger units.
-  const decimals = toUnit === 'mcg' ? 2 : toUnit === 'mg' ? 4 : 6;
+  const decimals = toUnit === 'mcg' ? 2 : toUnit === 'mg' || toUnit === 'cg' ? 4 : 6;
+  return round(converted, decimals);
+}
+
+// --- Prescribed-dose unit whitelist ---------------------------------------
+// The units above (mcg through lb) are the full set offered by the
+// general-purpose standalone mass converter. A *prescribed dose* is a
+// different, narrower concept: in real-world prescribing, a drug quantity
+// is documented in micrograms, milligrams, or (occasionally, for larger
+// volumes such as some antibiotics) grams - never in kilograms or pounds,
+// which describe the *patient's body weight* rather than the amount of
+// drug given, and never in centigrams or decagrams, which are not used in
+// pharmaceutical practice. This whitelist keeps the "Prescribed dose" unit
+// picker restricted to units a clinician would actually see on a drug
+// chart, separate from the general mass converter's full unit list.
+const DOSE_MASS_UNITS = ['mcg', 'mg', 'g'];
+
+// --- Standalone unit conversion (length/height) --------------------------
+// Independent height/length converter, separate from the height field
+// embedded in the BSA-dose calculator above. All factors are expressed in
+// centimetres (the base unit for this table); the inch factor (2.54 cm)
+// matches the cm<->inch conversion already used for height elsewhere in
+// this module (INCH_PER_CM = 1 / 2.54).
+const LENGTH_UNITS_TO_CM = {
+  mm: 0.1, // millimetre
+  cm: 1, // centimetre
+  inch: 2.54, // inch
+  ft: 30.48, // foot
+  m: 100, // metre
+};
+
+const LENGTH_UNIT_LABELS = {
+  mm: 'mm (millimetre)',
+  cm: 'cm (centimetre)',
+  inch: 'in (inch)',
+  ft: 'ft (foot)',
+  m: 'm (metre)',
+};
+
+/**
+ * Convert a length/height value between any two supported units.
+ * @param {number} value
+ * @param {'mm'|'cm'|'inch'|'ft'|'m'} fromUnit
+ * @param {'mm'|'cm'|'inch'|'ft'|'m'} toUnit
+ * @returns {number}
+ */
+function convertLength(value, fromUnit, toUnit) {
+  const fromFactor = LENGTH_UNITS_TO_CM[fromUnit];
+  const toFactor = LENGTH_UNITS_TO_CM[toUnit];
+  if (!fromFactor || !toFactor) {
+    throw new Error(`Unsupported length unit: ${!fromFactor ? fromUnit : toUnit}`);
+  }
+  const cm = Number(value) * fromFactor;
+  const converted = cm / toFactor;
+  const decimals = toUnit === 'mm' ? 2 : toUnit === 'm' ? 4 : 3;
   return round(converted, decimals);
 }
 
@@ -219,10 +301,15 @@ module.exports = {
   normaliseHeightToCm,
   calculateBSA,
   calculateBsaDose,
+  calculateBsaOnly,
   calculateWeightDose,
   round,
   MASS_UNITS_TO_GRAMS,
   MASS_UNIT_LABELS,
+  DOSE_MASS_UNITS,
   convertMass,
+  LENGTH_UNITS_TO_CM,
+  LENGTH_UNIT_LABELS,
+  convertLength,
   STANDARD_BSA_M2,
 };

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from './api';
 import Formula from './Formula';
+import { sanitizeDecimalInput } from './utils/numberInput';
 
 const STEPS = [
   { id: 1, label: '1. Category & type' },
@@ -37,7 +38,8 @@ export default function DoseCalculator() {
   const [heightValue, setHeightValue] = useState('');
   const [heightUnit, setHeightUnit] = useState('cm');
   const [dosePerUnit, setDosePerUnit] = useState('');
-  const [doseUnitLabel, setDoseUnitLabel] = useState('');
+  const [doseMassUnit, setDoseMassUnit] = useState('mg');
+  const [massUnits, setMassUnits] = useState([]);
 
   const [weightError, setWeightError] = useState('');
   const [heightError, setHeightError] = useState('');
@@ -53,6 +55,12 @@ export default function DoseCalculator() {
     apiFetch('/calc/categories')
       .then(({ categories: cats }) => setCategories(cats))
       .catch((err) => setFormError(err.message));
+    apiFetch('/calc/dose-units')
+      .then(({ units }) => setMassUnits(units))
+      .catch(() => {
+        /* Dose unit dropdown falls back to its default option if this fails;
+           it isn't essential to completing a calculation. */
+      });
   }, []);
 
   async function validateField(field, value, setter) {
@@ -99,7 +107,7 @@ export default function DoseCalculator() {
     setHeightValue('');
     setHeightUnit('cm');
     setDosePerUnit('');
-    setDoseUnitLabel('');
+    setDoseMassUnit('mg');
     setWeightError('');
     setHeightError('');
     setDoseError('');
@@ -109,6 +117,7 @@ export default function DoseCalculator() {
     e.preventDefault();
     setFormError('');
     setCalculating(true);
+    const doseUnitLabel = doseMassUnit ? `${doseMassUnit}${calcType === 'bsa' ? '/m\u00b2' : '/kg'}` : '';
     try {
       const res = await apiFetch('/calc/calculate', {
         method: 'POST',
@@ -163,6 +172,7 @@ export default function DoseCalculator() {
 
       {step === 1 && (
         <form onSubmit={handleStep1Submit}>
+          <div className="field-grid">
           <div className="field-group">
             <label htmlFor="category">
               Clinical category <span className="required-tag">*</span>
@@ -209,6 +219,7 @@ export default function DoseCalculator() {
               </div>
             </div>
           </div>
+          </div>
 
           <div className="btn-row">
             <button type="submit">Next</button>
@@ -218,18 +229,19 @@ export default function DoseCalculator() {
 
       {step === 2 && (
         <form onSubmit={handleCalculate} noValidate>
+          <div className="field-grid">
           <div className="field-group grouped">
             <label htmlFor="weightValue">
               Patient weight <span className="required-tag">*</span>
             </label>
             <div className="input-with-unit">
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 id="weightValue"
-                step="0.01"
                 required
                 value={weightValue}
-                onChange={(e) => handleWeightChange(e.target.value)}
+                onChange={(e) => handleWeightChange(sanitizeDecimalInput(e.target.value))}
               />
               <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Weight unit">
                 <div className="choice-option">
@@ -273,12 +285,12 @@ export default function DoseCalculator() {
               </label>
               <div className="input-with-unit">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   id="heightValue"
-                  step="0.01"
                   required={isBsa}
                   value={heightValue}
-                  onChange={(e) => handleHeightChange(e.target.value)}
+                  onChange={(e) => handleHeightChange(sanitizeDecimalInput(e.target.value))}
                 />
                 <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit">
                   <div className="choice-option">
@@ -316,25 +328,35 @@ export default function DoseCalculator() {
             </label>
             <div className="input-with-unit">
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 id="dosePerUnit"
-                step="0.0001"
                 required
                 value={dosePerUnit}
-                onChange={(e) => handleDoseChange(e.target.value)}
+                onChange={(e) => handleDoseChange(sanitizeDecimalInput(e.target.value))}
               />
-              <input
-                type="text"
-                id="doseUnitLabel"
-                placeholder="e.g. mg/kg or mg/m2"
-                className="unit-choice"
-                style={{ maxWidth: 180 }}
-                value={doseUnitLabel}
-                onChange={(e) => setDoseUnitLabel(e.target.value)}
-              />
+              <div className="dose-unit-picker">
+                <select
+                  id="doseMassUnit"
+                  className="unit-choice"
+                  aria-label="Dose mass unit"
+                  value={doseMassUnit}
+                  onChange={(e) => setDoseMassUnit(e.target.value)}
+                >
+                  {massUnits.map((u) => (
+                    <option key={u.key} value={u.key}>
+                      {u.key}
+                    </option>
+                  ))}
+                </select>
+                <span className="dose-unit-suffix">/{isBsa ? 'm\u00b2' : 'kg'}</span>
+              </div>
             </div>
-            <p className="help-text">{isBsa ? 'Dose per square metre of body surface area.' : 'Dose per kilogram of body weight.'}</p>
+            <p className="help-text">
+              {isBsa ? 'Dose per square metre of body surface area.' : 'Dose per kilogram of body weight.'}
+            </p>
             <p className="field-error">{doseError}</p>
+          </div>
           </div>
 
           <div className="btn-row">

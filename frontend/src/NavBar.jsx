@@ -21,7 +21,7 @@ export default function NavBar() {
               Calculator
             </NavLink>
             <NavLink to="/converter" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Unit Converter
+              Tools
             </NavLink>
             <NavLink to="/history" className={({ isActive }) => (isActive ? 'active' : '')}>
               My History

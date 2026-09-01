@@ -5,21 +5,33 @@
 */
 
 :root {
-  /* Colour palette - soft, low-stress, minimal distraction */
-  --color-bg: #f6f8fa;
+  /* Colour palette - soft, low-stress, minimal distraction, built around
+     the brand colours #33C9EC (cyan) and #9ECD73 (green). The raw brand
+     hexes are kept as --color-brand-* and used decoratively (stripes,
+     borders, tints); --color-primary/--color-accent are darker, WCAG
+     AA-safe shades derived from the same two hues, used wherever text
+     needs to sit on a solid fill (buttons, active states) so the clinical
+     feel stays calm and readable rather than loud. */
+  --color-bg: #eef7f9;
   --color-surface: #ffffff;
-  --color-border: #dbe2ea;
-  --color-text: #223047;
-  --color-muted: #6b7684;
+  --color-border: #d7e6ea;
+  --color-text: #17303d;
+  --color-muted: #5c7480;
 
-  --color-primary: #3d6b8c;
-  --color-primary-hover: #2f5570;
-  --color-accent: #6fa88a;
+  --color-brand-cyan: #33c9ec;
+  --color-brand-green: #9ecd73;
+  --color-cyan-tint: #e3f7fc;
+  --color-green-tint: #eef7e6;
+
+  --color-primary: #0a6b85;
+  --color-primary-hover: #085a70;
+  --color-accent: #4f7a37;
+  --color-accent-hover: #3f642c;
 
   --color-error: #b3452c;
   --color-error-bg: #fbeae5;
-  --color-success: #2e6b4a;
-  --color-success-bg: #eaf4ee;
+  --color-success: #3f642c;
+  --color-success-bg: #eef6e7;
 
   /* Shape */
   --radius-sm: 6px;
@@ -44,6 +56,7 @@
 
   /* Layout */
   --max-width-form: 640px;
+  --max-width-medium: 640px;
   --max-width-wide: 880px;
   --page-margin: 32px;
   --card-padding: 24px;
@@ -54,15 +67,19 @@
 @media (min-width: 768px) {
   :root {
     --max-width-form: 680px;
+    --max-width-medium: 860px;
     --max-width-wide: 1040px;
   }
 }
 
 /* Desktop: wide pages (History, Reports) can make good use of a larger
    canvas - tables and side-by-side report cards have room to breathe
-   instead of being squeezed into a phone-width column. */
+   instead of being squeezed into a phone-width column. The "medium" tier
+   (Calculator, Converter) also gets more room so its multi-column field
+   layout (see .field-grid) has space to spread out. */
 @media (min-width: 1200px) {
   :root {
+    --max-width-medium: 980px;
     --max-width-wide: 1280px;
   }
 }

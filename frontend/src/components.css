@@ -8,6 +8,10 @@
 .app-header {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  /* Brand identity stripe - the two brand colours used together, once,
+     as a calm top accent rather than throughout the interface. */
+  border-top: 4px solid;
+  border-image: linear-gradient(90deg, var(--color-brand-cyan), var(--color-brand-green)) 1;
   padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
@@ -45,8 +49,9 @@
   background: var(--color-bg);
 }
 .app-nav a.active {
-  border-color: var(--color-border);
-  background: var(--color-bg);
+  border-color: var(--color-brand-cyan);
+  background: var(--color-cyan-tint);
+  color: var(--color-primary);
 }
 .session-email {
   color: var(--color-muted);
@@ -101,7 +106,24 @@ form {
   border-radius: var(--radius);
   padding: 14px;
   gap: 14px;
-  background: #fbfcfd;
+  background: #f5fbfc;
+}
+
+/* On tablet/desktop, lay fields out side by side instead of one long
+   vertical stack, so the wider "medium" container (see tokens.css) is
+   actually put to use. auto-fit collapses gracefully back to a single
+   column on narrower screens, and naturally handles the height field being
+   present only for BSA calculations. */
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (min-width: 640px) {
+  .field-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
 }
 
 label {
@@ -130,11 +152,13 @@ select {
   border-radius: var(--radius);
   background: #fff;
   width: 100%;
+  max-width: 480px;
 }
 input:focus,
 select:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(51, 201, 236, 0.22);
 }
 
 .help-text {
@@ -159,6 +183,21 @@ select:focus {
 }
 .input-with-unit .unit-choice {
   flex: 0 0 auto;
+}
+.dose-unit-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.dose-unit-picker .unit-choice {
+  width: auto;
+  min-width: 90px;
+}
+.dose-unit-suffix {
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 @media (max-width: 420px) {
@@ -189,6 +228,47 @@ select:focus {
 .choice-option label {
   font-weight: 400;
   cursor: pointer;
+}
+
+/* --- Tool tabs (Tools page: mass / height / BSA) -------------------------- */
+.tool-tabs {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+button.tool-tab {
+  font: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 3px solid transparent;
+  padding: 8px 10px;
+  margin-bottom: -1px;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+button.tool-tab:hover {
+  background: var(--color-cyan-tint);
+  color: var(--color-primary);
+}
+button.tool-tab:focus-visible {
+  background: var(--color-cyan-tint);
+  color: var(--color-primary);
+}
+button.tool-tab:active {
+  background: var(--color-cyan-tint);
+  color: var(--color-primary);
+}
+button.tool-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-brand-cyan);
+}
+button.tool-tab.active:hover {
+  background: var(--color-cyan-tint);
 }
 
 /* --- Buttons: consistent style ------------------------------------------- */
@@ -271,7 +351,7 @@ button:disabled {
 .progress-step.done {
   background: var(--color-accent);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-brand-green);
 }
 
 /* --- Calculation step breakdown (FR9) ---------------------------------------- */
@@ -318,6 +398,7 @@ button:disabled {
   background: var(--color-success-bg);
   border-radius: var(--radius);
   border: 1px solid #c9e2d3;
+  border-left: 4px solid var(--color-brand-green);
 }
 .calc-result .result-value {
   font-size: var(--font-size-xl);

@@ -146,6 +146,78 @@ describe('standalone mass unit conversion (mcg/mg/g/kg/lb)', () => {
   test('throws on an unsupported unit', () => {
     expect(() => calc.convertMass(1, 'g', 'stone')).toThrow();
   });
+
+  test('converts decagrams to grams', () => {
+    // 5 dg = 50 g
+    expect(calc.convertMass(5, 'dg', 'g')).toBeCloseTo(50, 4);
+  });
+
+  test('converts decagrams to milligrams', () => {
+    // 1 dg = 10000 mg
+    expect(calc.convertMass(1, 'dg', 'mg')).toBeCloseTo(10000, 2);
+  });
+
+  test('converts centigrams to grams', () => {
+    // 250 cg = 2.5 g
+    expect(calc.convertMass(250, 'cg', 'g')).toBeCloseTo(2.5, 4);
+  });
+
+  test('converts grams to centigrams', () => {
+    // 1 g = 100 cg
+    expect(calc.convertMass(1, 'g', 'cg')).toBeCloseTo(100, 2);
+  });
+});
+
+describe('prescribed-dose unit whitelist (DOSE_MASS_UNITS)', () => {
+  test('only exposes units a drug dose is actually prescribed in', () => {
+    // mcg/mg/g are real prescribing units; kg/lb describe body weight (not
+    // drug quantity) and cg/dg are not used in pharmaceutical practice, so
+    // none of those four belong in the dose-unit picker.
+    expect(calc.DOSE_MASS_UNITS).toEqual(['mcg', 'mg', 'g']);
+    expect(calc.DOSE_MASS_UNITS).not.toEqual(expect.arrayContaining(['kg', 'lb', 'cg', 'dg']));
+  });
+
+  test('every whitelisted unit is a valid, convertible mass unit', () => {
+    calc.DOSE_MASS_UNITS.forEach((unit) => {
+      expect(calc.MASS_UNITS_TO_GRAMS[unit]).toBeDefined();
+      expect(calc.MASS_UNIT_LABELS[unit]).toBeDefined();
+    });
+  });
+});
+
+describe('standalone length/height conversion', () => {
+  test('converts inches to centimetres', () => {
+    // 70 inch * 2.54 = 177.8 cm
+    expect(calc.convertLength(70, 'inch', 'cm')).toBeCloseTo(177.8, 2);
+  });
+
+  test('converts centimetres to metres', () => {
+    expect(calc.convertLength(180, 'cm', 'm')).toBeCloseTo(1.8, 4);
+  });
+
+  test('converts feet to centimetres', () => {
+    // 6 ft * 30.48 = 182.88 cm
+    expect(calc.convertLength(6, 'ft', 'cm')).toBeCloseTo(182.88, 2);
+  });
+
+  test('throws on an unsupported unit', () => {
+    expect(() => calc.convertLength(1, 'cm', 'yard')).toThrow();
+  });
+});
+
+describe('standalone BSA calculator (independent of BSA-dose calculation)', () => {
+  test('70 kg, 170 cm -> BSA 1.82 m^2, no dose fields present', () => {
+    const { bsa, steps } = calc.calculateBsaOnly(70, 170);
+    expect(bsa).toBeCloseTo(1.82, 2);
+    expect(steps).toHaveLength(2);
+    expect(steps.some((s) => /dose/i.test(s.title))).toBe(false);
+  });
+
+  test('matches the BSA figure produced inside the BSA-dose calculator', () => {
+    const standalone = calc.calculateBsaOnly(90, 190);
+    const { bsa: doseCalcBsa } = calc.calculateBsaDose(90, 190, 100);
+    expect(standalone.bsa).toBe(doseCalcBsa);
+  });
 });
 
 describe('input validation ranges (FR8, Table 4.2)', () => {
