@@ -17,6 +17,7 @@ const VALID_RANGES = {
 
 const LB_PER_KG = 2.2046226218; // conversion factor, kg <-> lb
 const INCH_PER_CM = 0.3937007874; // conversion factor, cm <-> inch
+const STANDARD_BSA_M2 = 1.73; // reference adult BSA used to normalise BSA-based dosing
 
 /**
  * FR8: Validate a single numeric field against a named range.
@@ -86,8 +87,8 @@ function normaliseHeightToCm(value, unit) {
 
 // --- FR5: Body Surface Area (Mosteller, 1987) --------------------------
 /**
- * BSA (m^2) = sqrt( (height_cm * weight_kg) / 3600 )
- * NFR4: results must match manually verified test cases within +/-0.01
+ * BSA (m²) = √( (height_cm × weight_kg) / 3600 )
+ * NFR4: results must match manually verified test cases within ±0.01
  */
 function calculateBSA(weightKg, heightCm) {
   const bsa = Math.sqrt((heightCm * weightKg) / 3600);
@@ -96,6 +97,11 @@ function calculateBSA(weightKg, heightCm) {
 
 // --- FR6: BSA-based dose -------------------------------------------
 /**
+ * Dose is normalised to the standard reference adult body surface area of
+ * 1.73 m² - i.e. total dose = (patient BSA ÷ 1.73 m²) × dose per m². This is
+ * the standard body-surface-area-normalisation convention used when scaling
+ * a reference dose to an individual patient.
+ *
  * @param {number} weightKg
  * @param {number} heightCm
  * @param {number} dosePerM2 - generic dose per m^2 (e.g. mg/m^2)
@@ -103,12 +109,24 @@ function calculateBSA(weightKg, heightCm) {
  */
 function calculateBsaDose(weightKg, heightCm, dosePerM2) {
   const bsa = calculateBSA(weightKg, heightCm);
-  const totalDose = round((bsa/1.73) * dosePerM2, 4);
+  const totalDose = round((bsa / STANDARD_BSA_M2) * dosePerM2, 4);
 
   const steps = [
-    `Step 1 - Convert / confirm inputs: weight = ${weightKg} kg, height = ${heightCm} cm.`,
-    `Step 2 - Apply the Mosteller formula: BSA = sqrt((height_cm x weight_kg) / 3600) = sqrt((${heightCm} x ${weightKg}) / 3600) = ${bsa} m^2.`,
-    `Step 3 - Apply the dose formula: total dose = (BSA / 1.73) x dose per m^2 = (${bsa} / 1.73) x ${dosePerM2} = ${totalDose}.`,
+    {
+      title: 'Step 1 — Confirm inputs',
+      formula: `weight = ${weightKg} kg, height = ${heightCm} cm`,
+      latex: `\\text{weight} = ${weightKg}\\ \\text{kg}, \\quad \\text{height} = ${heightCm}\\ \\text{cm}`,
+    },
+    {
+      title: 'Step 2 — Apply the Mosteller formula',
+      formula: `BSA = √(height × weight ÷ 3600) = √(${heightCm} × ${weightKg} ÷ 3600) = ${bsa} m²`,
+      latex: `\\text{BSA} = \\sqrt{\\dfrac{\\text{height} \\times \\text{weight}}{3600}} = \\sqrt{\\dfrac{${heightCm} \\times ${weightKg}}{3600}} = ${bsa}\\ \\text{m}^2`,
+    },
+    {
+      title: 'Step 3 — Apply the dose formula',
+      formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × dose per m² = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
+      latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{dose per m}^2 = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
+    },
   ];
 
   return { bsa, totalDose, steps };
@@ -124,8 +142,16 @@ function calculateWeightDose(weightKg, dosePerKg) {
   const totalDose = round(weightKg * dosePerKg, 4);
 
   const steps = [
-    `Step 1 - Convert / confirm input: weight = ${weightKg} kg.`,
-    `Step 2 - Apply the dose formula: total dose = weight_kg x dose per kg = ${weightKg} x ${dosePerKg} = ${totalDose}.`,
+    {
+      title: 'Step 1 — Confirm input',
+      formula: `weight = ${weightKg} kg`,
+      latex: `\\text{weight} = ${weightKg}\\ \\text{kg}`,
+    },
+    {
+      title: 'Step 2 — Apply the dose formula',
+      formula: `Total dose = weight (kg) × dose per kg = ${weightKg} × ${dosePerKg} = ${totalDose}`,
+      latex: `\\text{Total dose} = \\text{weight}\\ (\\text{kg}) \\times \\text{dose per kg} = ${weightKg} \\times ${dosePerKg} = ${totalDose}`,
+    },
   ];
 
   return { totalDose, steps };
@@ -198,4 +224,5 @@ module.exports = {
   MASS_UNITS_TO_GRAMS,
   MASS_UNIT_LABELS,
   convertMass,
+  STANDARD_BSA_M2,
 };

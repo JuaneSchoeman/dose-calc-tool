@@ -54,12 +54,26 @@
   margin-right: var(--space-1);
 }
 
+@media (max-width: 480px) {
+  .app-header {
+    padding: var(--space-2) var(--space-3);
+  }
+  .app-nav a,
+  .app-nav button {
+    padding: 6px 9px;
+    font-size: var(--font-size-sm);
+  }
+  .brand {
+    font-size: var(--font-size-base);
+  }
+}
+
 /* --- Cards / layout ------------------------------------------------------ */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: var(--space-5);
+  padding: var(--card-padding);
   margin-bottom: var(--space-4);
 }
 
@@ -145,6 +159,13 @@ select:focus {
 }
 .input-with-unit .unit-choice {
   flex: 0 0 auto;
+}
+
+@media (max-width: 420px) {
+  .input-with-unit {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* --- Radio / checkbox groups: stacked vertically -------------------------- */
@@ -235,6 +256,13 @@ button:disabled {
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-border);
 }
+
+@media (max-width: 480px) {
+  .progress-step {
+    font-size: 0.72rem;
+    padding: 6px 2px;
+  }
+}
 .progress-step.active {
   background: var(--color-primary);
   color: #fff;
@@ -260,7 +288,29 @@ button:disabled {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 10px 14px;
-  font-size: 0.9rem;
+}
+.calc-step-title {
+  margin: 0 0 6px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.calc-step-formula {
+  margin: 0;
+  font-family: 'Cambria Math', Cambria, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  color: var(--color-text);
+}
+.calc-step-formula.katex-formula {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px; /* room for scrollbar so it doesn't clip descenders */
+}
+.calc-step-formula.katex-formula .katex-display {
+  margin: 0.2em 0;
 }
 .calc-result {
   margin-top: var(--space-4);
@@ -311,7 +361,7 @@ tbody tr:hover {
   grid-template-columns: 1fr;
   gap: var(--space-4);
 }
-@media (min-width: 720px) {
+@media (min-width: 768px) {
   .report-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -319,6 +369,7 @@ tbody tr:hover {
 
 .filter-row {
   display: flex;
+  flex-direction: row;
   gap: var(--space-3);
   align-items: flex-end;
   flex-wrap: wrap;

@@ -51,16 +51,35 @@ describe('BSA calculation - Mosteller formula (FR5, NFR4)', () => {
   });
 });
 
-describe('BSA-based dose (FR6)', () => {
-  test('70 kg, 170 cm, 100 mg/m^2 -> 181.81 mg', () => {
+describe('BSA-based dose (FR6, normalised to 1.73 m²)', () => {
+  test('70 kg, 170 cm, 100 mg/m^2 -> BSA 1.8181, dose normalised to 1.73 m^2 -> 105.0925', () => {
     const { bsa, totalDose } = calc.calculateBsaDose(70, 170, 100);
     expect(bsa).toBeCloseTo(1.8181, 2);
-    expect(totalDose).toBeCloseTo(181.81, 1);
+    expect(totalDose).toBeCloseTo(105.0925, 3);
+  });
+
+  test('a patient exactly at the reference 1.73 m^2 BSA gets the unscaled dose', () => {
+    // height=170cm, weight~63.38kg gives BSA = sqrt((170*63.38)/3600) = 1.73 m^2
+    const { bsa, totalDose } = calc.calculateBsaDose(63.38, 170, 100);
+    expect(bsa).toBeCloseTo(1.73, 2);
+    expect(totalDose).toBeCloseTo(100, 0);
   });
 
   test('returns a three-step breakdown (FR9)', () => {
     const { steps } = calc.calculateBsaDose(70, 170, 100);
     expect(steps).toHaveLength(3);
+  });
+
+  test('every step includes a title, plain-text formula, and LaTeX expression', () => {
+    const { steps } = calc.calculateBsaDose(70, 170, 100);
+    steps.forEach((step) => {
+      expect(typeof step.title).toBe('string');
+      expect(step.title.length).toBeGreaterThan(0);
+      expect(typeof step.formula).toBe('string');
+      expect(step.formula.length).toBeGreaterThan(0);
+      expect(typeof step.latex).toBe('string');
+      expect(step.latex.length).toBeGreaterThan(0);
+    });
   });
 });
 
@@ -78,6 +97,18 @@ describe('weight-based dose (FR7)', () => {
   test('returns a two-step breakdown (FR9)', () => {
     const { steps } = calc.calculateWeightDose(20, 5);
     expect(steps).toHaveLength(2);
+  });
+
+  test('every step includes a title, plain-text formula, and LaTeX expression', () => {
+    const { steps } = calc.calculateWeightDose(20, 5);
+    steps.forEach((step) => {
+      expect(typeof step.title).toBe('string');
+      expect(step.title.length).toBeGreaterThan(0);
+      expect(typeof step.formula).toBe('string');
+      expect(step.formula.length).toBeGreaterThan(0);
+      expect(typeof step.latex).toBe('string');
+      expect(step.latex.length).toBeGreaterThan(0);
+    });
   });
 });
 

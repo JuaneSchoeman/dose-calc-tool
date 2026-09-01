@@ -2,7 +2,7 @@
 
 .page-container {
   max-width: var(--max-width-form);
-  margin: var(--space-6) auto;
+  margin: var(--page-margin) auto;
   padding: 0 var(--space-4);
 }
 

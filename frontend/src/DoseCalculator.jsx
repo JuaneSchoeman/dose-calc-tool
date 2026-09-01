@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from './api';
+import Formula from './Formula';
 
 const STEPS = [
   { id: 1, label: '1. Category & type' },
@@ -355,7 +356,10 @@ export default function DoseCalculator() {
           <h2>Result</h2>
           <ol className="calc-steps">
             {result.steps.map((s, i) => (
-              <li key={i}>{s}</li>
+              <li key={i}>
+                <p className="calc-step-title">{s.title}</p>
+                <Formula latex={s.latex} fallback={s.formula} />
+              </li>
             ))}
           </ol>
           <div className="calc-result">

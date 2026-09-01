@@ -45,4 +45,33 @@
   /* Layout */
   --max-width-form: 640px;
   --max-width-wide: 880px;
+  --page-margin: 32px;
+  --card-padding: 24px;
+}
+
+/* Tablet and up: forms and the "wide" (dashboard-style) pages get more
+   breathing room since there's screen real estate to use. */
+@media (min-width: 768px) {
+  :root {
+    --max-width-form: 680px;
+    --max-width-wide: 1040px;
+  }
+}
+
+/* Desktop: wide pages (History, Reports) can make good use of a larger
+   canvas - tables and side-by-side report cards have room to breathe
+   instead of being squeezed into a phone-width column. */
+@media (min-width: 1200px) {
+  :root {
+    --max-width-wide: 1280px;
+  }
+}
+
+/* Small phones: tighten padding/margins so content isn't fighting the
+   screen edges. */
+@media (max-width: 480px) {
+  :root {
+    --page-margin: 16px;
+    --card-padding: 16px;
+  }
 }
