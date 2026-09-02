@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = [
+  'General',
   'Adult Medical/Surgical',
   'Oncology',
   'Outpatient/Ambulatory',
   'ICU',
   'Emergency',
   'Paediatrics',
+  'Pharmacy',
+  'Other',
 ];
 
 const initialState = {
