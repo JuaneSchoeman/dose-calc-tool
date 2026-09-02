@@ -15,9 +15,14 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "express-session": "^1.18.0"
+    "express-session": "^1.18.0",
+    "node-gyp": "^13.0.2",
+    "rebuild": "^0.1.2"
   },
   "devDependencies": {
     "jest": "^29.7.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
   }
 }
