@@ -13,6 +13,12 @@ const VALID_RANGES = {
   weightLb: { min: 1.1, max: 660, label: 'Weight (lb)' },
   heightCm: { min: 30, max: 250, label: 'Height (cm)' },
   dosePerUnit: { min: 0, max: Infinity, exclusiveMin: true, label: 'Dose' },
+  // Bounds chosen to match the BSA values the Mosteller formula can
+  // actually produce from the weight/height ranges above (min ≈ 0.065 m²
+  // at 0.5 kg/30 cm, max ≈ 4.564 m² at 300 kg/250 cm), so a directly
+  // entered BSA is held to the same real-world envelope as one derived
+  // from weight and height.
+  bsaM2: { min: 0.06, max: 4.6, label: 'BSA (m\u00b2)' },
 };
 
 const LB_PER_KG = 2.2046226218; // conversion factor, kg <-> lb
@@ -111,14 +117,7 @@ function calculateBsaDose(weightKg, heightCm, dosePerM2) {
   const bsa = calculateBSA(weightKg, heightCm);
   const totalDose = round((bsa / STANDARD_BSA_M2) * dosePerM2, 4);
 
-  const steps = [
-    ...buildBsaCoreSteps(weightKg, heightCm, bsa),
-    {
-      title: 'Step 3 — Apply the dose formula',
-      formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × dose per m² = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
-      latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{dose per m}^2 = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
-    },
-  ];
+  const steps = [...buildBsaCoreSteps(weightKg, heightCm, bsa), buildDoseFormulaStep(3, bsa, dosePerM2, totalDose)];
 
   return { bsa, totalDose, steps };
 }
@@ -140,6 +139,18 @@ function buildBsaCoreSteps(weightKg, heightCm, bsa) {
   ];
 }
 
+// Shared by calculateBsaDose (BSA derived from weight/height) and
+// calculateDoseFromDirectBsa (BSA entered directly) - the arithmetic once
+// BSA is known is identical either way, only the step number differs
+// depending on how many steps came before it.
+function buildDoseFormulaStep(stepNumber, bsa, dosePerM2, totalDose) {
+  return {
+    title: `Step ${stepNumber} — Apply the dose formula`,
+    formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × dose per m² = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
+    latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{dose per m}^2 = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
+  };
+}
+
 // --- Standalone BSA calculator -----------------------------------------
 // Computes body surface area only - deliberately NOT wired into the
 // weight-/BSA-dose calculators above. This lets a clinician or student look
@@ -154,6 +165,31 @@ function buildBsaCoreSteps(weightKg, heightCm, bsa) {
 function calculateBsaOnly(weightKg, heightCm) {
   const bsa = calculateBSA(weightKg, heightCm);
   return { bsa, steps: buildBsaCoreSteps(weightKg, heightCm, bsa) };
+}
+
+// --- BSA-based dose, starting from a known BSA ---------------------------
+// Alternative entry point for the BSA-dose calculator: a clinician who
+// already knows the patient's BSA (e.g. from a chart, or from the
+// standalone BSA calculator) can skip re-entering weight and height and
+// dose directly off that BSA figure. Same dose arithmetic as
+// calculateBsaDose, just without the weight/height/Mosteller step, since
+// there's nothing to derive - BSA is already given.
+/**
+ * @param {number} bsa - body surface area in m^2, entered directly
+ * @param {number} dosePerM2 - generic dose per m^2 (e.g. mg/m^2)
+ * @returns {{ totalDose: number, steps: object[] }}
+ */
+function calculateDoseFromDirectBsa(bsa, dosePerM2) {
+  const totalDose = round((bsa / STANDARD_BSA_M2) * dosePerM2, 4);
+  const steps = [
+    {
+      title: 'Step 1 — Confirm input',
+      formula: `BSA = ${bsa} m²`,
+      latex: `\\text{BSA} = ${bsa}\\ \\text{m}^2`,
+    },
+    buildDoseFormulaStep(2, bsa, dosePerM2, totalDose),
+  ];
+  return { totalDose, steps };
 }
 
 // --- FR7: weight-based dose ------------------------------------------
@@ -302,6 +338,7 @@ module.exports = {
   calculateBSA,
   calculateBsaDose,
   calculateBsaOnly,
+  calculateDoseFromDirectBsa,
   calculateWeightDose,
   round,
   MASS_UNITS_TO_GRAMS,

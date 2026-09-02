@@ -33,21 +33,36 @@ CREATE TABLE IF NOT EXISTS users (
 // calculations: immutable audit record (NFR10) - no UPDATE/DELETE routes are
 // ever exposed for this table. Stores only user id, category, result and a
 // timestamp - no patient-identifiable information (NFR5, FR10).
+// dose_unit is the plain mass unit for the computed total_dose (e.g. "mg") -
+// a total amount is never itself "per kg" or "per m2", so it's stored and
+// displayed without that suffix. dose_rate_label is the separate, full
+// prescribing-rate label (e.g. "mg/m2") that pairs with dose_per_unit, kept
+// so the original prescribed rate remains visible in the audit trail.
 db.exec(`
 CREATE TABLE IF NOT EXISTS calculations (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id      INTEGER NOT NULL REFERENCES users(id),
-  category     TEXT NOT NULL,
-  calc_type    TEXT NOT NULL CHECK (calc_type IN ('weight', 'bsa')),
-  weight_kg    REAL,
-  height_cm    REAL,
-  bsa_m2       REAL,
-  dose_per_unit REAL NOT NULL,
-  total_dose   REAL NOT NULL,
-  dose_unit    TEXT NOT NULL,
-  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id         INTEGER NOT NULL REFERENCES users(id),
+  category        TEXT NOT NULL,
+  calc_type       TEXT NOT NULL CHECK (calc_type IN ('weight', 'bsa')),
+  weight_kg       REAL,
+  height_cm       REAL,
+  bsa_m2          REAL,
+  dose_per_unit   REAL NOT NULL,
+  dose_rate_label TEXT,
+  total_dose      REAL NOT NULL,
+  dose_unit       TEXT NOT NULL,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+
+// Migration guard: a database created before dose_rate_label existed won't
+// have the column yet. ALTER TABLE ADD COLUMN is safe to run repeatedly
+// once guarded like this, and leaves existing rows' dose_rate_label as
+// NULL rather than losing any data.
+const calculationColumns = db.prepare('PRAGMA table_info(calculations)').all();
+if (!calculationColumns.some((col) => col.name === 'dose_rate_label')) {
+  db.exec('ALTER TABLE calculations ADD COLUMN dose_rate_label TEXT;');
+}
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id);`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_calc_category ON calculations(category);`);

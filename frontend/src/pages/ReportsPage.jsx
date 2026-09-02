@@ -299,13 +299,14 @@ export default function ReportsPage() {
                   <th>Weight (kg)</th>
                   <th>Height (cm)</th>
                   <th>BSA (m2)</th>
+                  <th>Prescribed rate</th>
                   <th>Total dose</th>
                 </tr>
               </thead>
               <tbody>
                 {detailedRows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="help-text">
+                    <td colSpan={9} className="help-text">
                       No calculations match these filters in this period.
                     </td>
                   </tr>
@@ -316,9 +317,12 @@ export default function ReportsPage() {
                     <td>{r.identifier_number}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>
-                    <td>{r.weight_kg ?? ''}</td>
+                    <td>{r.weight_kg ?? '-'}</td>
                     <td>{r.height_cm ?? '-'}</td>
                     <td>{r.bsa_m2 ?? '-'}</td>
+                    <td>
+                      {r.dose_per_unit} {r.dose_rate_label || ''}
+                    </td>
                     <td>
                       {r.total_dose} {r.dose_unit || ''}
                     </td>

@@ -12,6 +12,7 @@ const COLUMNS = [
   { key: 'weight_kg', label: 'Weight (kg)' },
   { key: 'height_cm', label: 'Height (cm)' },
   { key: 'bsa_m2', label: 'BSA (m2)' },
+  { key: 'dose_per_unit', label: 'Prescribed rate' },
   { key: 'total_dose', label: 'Total dose' },
 ];
 
@@ -82,9 +83,12 @@ export default function HistoryPage() {
                     <td>{r.created_at}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>
-                    <td>{r.weight_kg ?? ''}</td>
+                    <td>{r.weight_kg ?? '-'}</td>
                     <td>{r.height_cm ?? '-'}</td>
                     <td>{r.bsa_m2 ?? '-'}</td>
+                    <td>
+                      {r.dose_per_unit} {r.dose_rate_label || ''}
+                    </td>
                     <td>
                       {r.total_dose} {r.dose_unit || ''}
                     </td>

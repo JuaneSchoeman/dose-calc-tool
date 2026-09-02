@@ -150,11 +150,29 @@ const FIELD_TO_RANGE = {
   weightLb: 'weightLb',
   heightCm: 'heightCm',
   dosePerUnit: 'dosePerUnit',
+  bsaM2: 'bsaM2',
 };
 
 // POST /calc/calculate  (FR4-FR9)
 // body: { category, calcType: 'weight'|'bsa', weightValue, weightUnit,
-//         heightValue?, heightUnit?, dosePerUnit, doseUnitLabel }
+//         heightValue?, heightUnit?, bsaInputMode?, bsaValue?, dosePerUnit,
+//         doseMassUnit }
+//
+// doseMassUnit is the plain mass unit the dose was prescribed in (e.g.
+// "mg") - one of calc.DOSE_MASS_UNITS. The full prescribing-rate label
+// (e.g. "mg/kg" or "mg/m2") is derived here, server-side, since only the
+// backend knows calcType with certainty; it's stored separately from the
+// computed total dose's unit, because a *total* dose is a plain amount
+// (e.g. "182 mg"), never itself "per kg" or "per m2" - that suffix
+// describes the prescribed rate that was multiplied out to get there.
+//
+// For calcType 'bsa', bsaInputMode chooses how BSA is obtained:
+//   'measurements' (default) - BSA is derived from weightValue/heightValue
+//                               via the Mosteller formula, as before.
+//   'direct'                 - the caller already knows the patient's BSA
+//                               (e.g. from a chart) and supplies bsaValue
+//                               directly; weight/height are not required
+//                               and are not stored for that record.
 router.post('/calculate', requireLogin, (req, res) => {
   const {
     category,
@@ -163,8 +181,10 @@ router.post('/calculate', requireLogin, (req, res) => {
     weightUnit,
     heightValue,
     heightUnit,
+    bsaInputMode,
+    bsaValue,
     dosePerUnit,
-    doseUnitLabel,
+    doseMassUnit,
   } = req.body;
 
   // --- FR3 validation ---
@@ -172,70 +192,108 @@ router.post('/calculate', requireLogin, (req, res) => {
     return res.status(400).json({ error: 'Please select a valid clinical category.' });
   }
 
-  // --- FR8: validate weight ---
-  const weightRangeKey = weightUnit === 'lb' ? 'weightLb' : 'weightKg';
-  const weightCheck = calc.validateNumber(weightValue, weightRangeKey);
-  if (!weightCheck.valid) return res.status(400).json({ error: weightCheck.message });
-
   // --- FR8: validate dose ---
   const doseCheck = calc.validateNumber(dosePerUnit, 'dosePerUnit');
   if (!doseCheck.valid) return res.status(400).json({ error: doseCheck.message });
 
-  // --- FR4: normalise weight to kg ---
-  const weightKg = calc.normaliseWeightToKg(weightValue, weightUnit);
+  const doseUnit = calc.DOSE_MASS_UNITS.includes(doseMassUnit) ? doseMassUnit : '';
 
   if (calcType === 'weight') {
+    // --- FR8: validate weight ---
+    const weightRangeKey = weightUnit === 'lb' ? 'weightLb' : 'weightKg';
+    const weightCheck = calc.validateNumber(weightValue, weightRangeKey);
+    if (!weightCheck.valid) return res.status(400).json({ error: weightCheck.message });
+
+    // --- FR4: normalise weight to kg ---
+    const weightKg = calc.normaliseWeightToKg(weightValue, weightUnit);
     const { totalDose, steps } = calc.calculateWeightDose(weightKg, Number(dosePerUnit));
+    const doseRateLabel = doseUnit ? `${doseUnit}/kg` : '';
 
     const info = db
       .prepare(
         `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, total_dose, dose_unit)
-         VALUES (?, ?, 'weight', ?, NULL, NULL, ?, ?, ?)`
+           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit)
+         VALUES (?, ?, 'weight', ?, NULL, NULL, ?, ?, ?, ?)`
       )
-      .run(req.session.user.id, category, weightKg, Number(dosePerUnit), totalDose, doseUnitLabel || '');
+      .run(req.session.user.id, category, weightKg, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit);
 
     return res.json({
       calcId: info.lastInsertRowid,
       calcType: 'weight',
       weightKg,
       totalDose,
-      doseUnit: doseUnitLabel || '',
+      doseUnit,
+      doseRateLabel,
       steps,
     });
   }
 
   if (calcType === 'bsa') {
-    const heightCheck = calc.validateNumber(
-      heightUnit === 'inch' ? calc.cmToInch(0) : heightValue,
-      'heightCm'
-    );
+    const doseRateLabel = doseUnit ? `${doseUnit}/m\u00b2` : '';
+
+    if (bsaInputMode === 'direct') {
+      // --- FR8: validate the directly entered BSA ---
+      const bsaCheck = calc.validateNumber(bsaValue, 'bsaM2');
+      if (!bsaCheck.valid) return res.status(400).json({ error: bsaCheck.message });
+
+      const bsa = calc.round(Number(bsaValue), 4);
+      const { totalDose, steps } = calc.calculateDoseFromDirectBsa(bsa, Number(dosePerUnit));
+
+      const info = db
+        .prepare(
+          `INSERT INTO calculations
+             (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit)
+           VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?)`
+        )
+        .run(req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit);
+
+      return res.json({
+        calcId: info.lastInsertRowid,
+        calcType: 'bsa',
+        bsaInputMode: 'direct',
+        bsa,
+        totalDose,
+        doseUnit,
+        doseRateLabel,
+        steps,
+      });
+    }
+
+    // Default 'measurements' mode: derive BSA from weight and height via
+    // the Mosteller formula, as before.
+    const weightRangeKey = weightUnit === 'lb' ? 'weightLb' : 'weightKg';
+    const weightCheck = calc.validateNumber(weightValue, weightRangeKey);
+    if (!weightCheck.valid) return res.status(400).json({ error: weightCheck.message });
+
+    const weightKg = calc.normaliseWeightToKg(weightValue, weightUnit);
+
     // FR8: validate height directly in cm-equivalent terms
     const heightCm = calc.normaliseHeightToCm(heightValue, heightUnit);
     const heightRangeCheck = calc.validateNumber(heightCm, 'heightCm');
     if (!heightRangeCheck.valid) {
       return res.status(400).json({ error: heightRangeCheck.message });
     }
-    void heightCheck;
 
     const { bsa, totalDose, steps } = calc.calculateBsaDose(weightKg, heightCm, Number(dosePerUnit));
 
     const info = db
       .prepare(
         `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, total_dose, dose_unit)
-         VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?)`
+           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit)
+         VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), totalDose, doseUnitLabel || '');
+      .run(req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit);
 
     return res.json({
       calcId: info.lastInsertRowid,
       calcType: 'bsa',
+      bsaInputMode: 'measurements',
       weightKg,
       heightCm,
       bsa,
       totalDose,
-      doseUnit: doseUnitLabel || '',
+      doseUnit,
+      doseRateLabel,
       steps,
     });
   }
@@ -247,7 +305,7 @@ router.post('/calculate', requireLogin, (req, res) => {
 router.get('/history', requireLogin, (req, res) => {
   const rows = db
     .prepare(
-      `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, total_dose, dose_unit, created_at
+      `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, created_at
        FROM calculations WHERE user_id = ? ORDER BY created_at DESC LIMIT 500`
     )
     .all(req.session.user.id);

@@ -37,12 +37,15 @@ export default function DoseCalculator() {
   const [weightUnit, setWeightUnit] = useState('kg');
   const [heightValue, setHeightValue] = useState('');
   const [heightUnit, setHeightUnit] = useState('cm');
+  const [bsaInputMode, setBsaInputMode] = useState('measurements');
+  const [bsaValue, setBsaValue] = useState('');
   const [dosePerUnit, setDosePerUnit] = useState('');
   const [doseMassUnit, setDoseMassUnit] = useState('mg');
   const [massUnits, setMassUnits] = useState([]);
 
   const [weightError, setWeightError] = useState('');
   const [heightError, setHeightError] = useState('');
+  const [bsaError, setBsaError] = useState('');
   const [doseError, setDoseError] = useState('');
 
   const [formError, setFormError] = useState('');
@@ -86,6 +89,11 @@ export default function DoseCalculator() {
     debounce(() => validateField('heightCm', value, setHeightError));
   }
 
+  function handleBsaChange(value) {
+    setBsaValue(value);
+    debounce(() => validateField('bsaM2', value, setBsaError));
+  }
+
   function handleDoseChange(value) {
     setDosePerUnit(value);
     debounce(() => validateField('dosePerUnit', value, setDoseError));
@@ -106,10 +114,13 @@ export default function DoseCalculator() {
     setWeightUnit('kg');
     setHeightValue('');
     setHeightUnit('cm');
+    setBsaInputMode('measurements');
+    setBsaValue('');
     setDosePerUnit('');
     setDoseMassUnit('mg');
     setWeightError('');
     setHeightError('');
+    setBsaError('');
     setDoseError('');
   }
 
@@ -117,7 +128,6 @@ export default function DoseCalculator() {
     e.preventDefault();
     setFormError('');
     setCalculating(true);
-    const doseUnitLabel = doseMassUnit ? `${doseMassUnit}${calcType === 'bsa' ? '/m\u00b2' : '/kg'}` : '';
     try {
       const res = await apiFetch('/calc/calculate', {
         method: 'POST',
@@ -128,8 +138,10 @@ export default function DoseCalculator() {
           weightUnit,
           heightValue,
           heightUnit,
+          bsaInputMode,
+          bsaValue,
           dosePerUnit,
-          doseUnitLabel,
+          doseMassUnit,
         }),
       });
       setResult(res);
@@ -148,6 +160,8 @@ export default function DoseCalculator() {
   }
 
   const isBsa = calcType === 'bsa';
+  const usingDirectBsa = isBsa && bsaInputMode === 'direct';
+  const showMeasurementFields = !isBsa || bsaInputMode === 'measurements';
 
   return (
     <div className="card">
@@ -230,6 +244,39 @@ export default function DoseCalculator() {
       {step === 2 && (
         <form onSubmit={handleCalculate} noValidate>
           <div className="field-grid">
+          {isBsa && (
+            <div className="field-group">
+              <label>
+                How would you like to provide BSA? <span className="required-tag">*</span>
+              </label>
+              <div className="choice-group" role="radiogroup" aria-label="BSA input method">
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="bsa-mode-measurements"
+                    name="bsaInputMode"
+                    value="measurements"
+                    checked={bsaInputMode === 'measurements'}
+                    onChange={() => setBsaInputMode('measurements')}
+                  />
+                  <label htmlFor="bsa-mode-measurements">Calculate BSA from weight and height</label>
+                </div>
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="bsa-mode-direct"
+                    name="bsaInputMode"
+                    value="direct"
+                    checked={bsaInputMode === 'direct'}
+                    onChange={() => setBsaInputMode('direct')}
+                  />
+                  <label htmlFor="bsa-mode-direct">Enter a known BSA directly</label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showMeasurementFields && (
           <div className="field-group grouped">
             <label htmlFor="weightValue">
               Patient weight <span className="required-tag">*</span>
@@ -277,8 +324,9 @@ export default function DoseCalculator() {
             <p className="help-text">Valid range: 0.5-300 kg.</p>
             <p className="field-error">{weightError}</p>
           </div>
+          )}
 
-          {isBsa && (
+          {isBsa && bsaInputMode === 'measurements' && (
             <div className="field-group grouped">
               <label htmlFor="heightValue">
                 Patient height <span className="required-tag">*</span>
@@ -288,7 +336,7 @@ export default function DoseCalculator() {
                   type="text"
                   inputMode="decimal"
                   id="heightValue"
-                  required={isBsa}
+                  required
                   value={heightValue}
                   onChange={(e) => handleHeightChange(sanitizeDecimalInput(e.target.value))}
                 />
@@ -319,6 +367,24 @@ export default function DoseCalculator() {
               </div>
               <p className="help-text">Valid range: 30-250 cm.</p>
               <p className="field-error">{heightError}</p>
+            </div>
+          )}
+
+          {usingDirectBsa && (
+            <div className="field-group grouped">
+              <label htmlFor="bsaValue">
+                Patient BSA <span className="required-tag">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                id="bsaValue"
+                required
+                value={bsaValue}
+                onChange={(e) => handleBsaChange(sanitizeDecimalInput(e.target.value))}
+              />
+              <p className="help-text">Body surface area in m². Valid range: 0.06-4.6 m².</p>
+              <p className="field-error">{bsaError}</p>
             </div>
           )}
 
@@ -389,6 +455,11 @@ export default function DoseCalculator() {
             <p className="result-value">
               {result.totalDose} {result.doseUnit || ''}
             </p>
+            {result.doseRateLabel && (
+              <p className="help-text" style={{ marginTop: 8 }}>
+                Prescribed as {dosePerUnit} {result.doseRateLabel}
+              </p>
+            )}
           </div>
           <div className="btn-row" style={{ marginTop: 20 }}>
             <button type="button" onClick={startNewCalculation}>

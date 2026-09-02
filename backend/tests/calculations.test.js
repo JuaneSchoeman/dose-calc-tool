@@ -83,6 +83,37 @@ describe('BSA-based dose (FR6, normalised to 1.73 m²)', () => {
   });
 });
 
+describe('BSA-based dose, entered directly (calculateDoseFromDirectBsa)', () => {
+  test('BSA 1.8181, 100 mg/m^2 -> matches the measurements-derived dose for the same BSA', () => {
+    const direct = calc.calculateDoseFromDirectBsa(1.8181, 100);
+    const fromMeasurements = calc.calculateBsaDose(70, 170, 100);
+    expect(direct.totalDose).toBe(fromMeasurements.totalDose);
+  });
+
+  test('a directly entered reference 1.73 m^2 BSA gets the unscaled dose', () => {
+    const { totalDose } = calc.calculateDoseFromDirectBsa(1.73, 100);
+    expect(totalDose).toBeCloseTo(100, 0);
+  });
+
+  test('returns a two-step breakdown (no weight/height/Mosteller step, since BSA is already given)', () => {
+    const { steps } = calc.calculateDoseFromDirectBsa(1.82, 100);
+    expect(steps).toHaveLength(2);
+    expect(steps.some((s) => /mosteller/i.test(s.title))).toBe(false);
+  });
+
+  test('every step includes a title, plain-text formula, and LaTeX expression', () => {
+    const { steps } = calc.calculateDoseFromDirectBsa(1.82, 100);
+    steps.forEach((step) => {
+      expect(typeof step.title).toBe('string');
+      expect(step.title.length).toBeGreaterThan(0);
+      expect(typeof step.formula).toBe('string');
+      expect(step.formula.length).toBeGreaterThan(0);
+      expect(typeof step.latex).toBe('string');
+      expect(step.latex.length).toBeGreaterThan(0);
+    });
+  });
+});
+
 describe('weight-based dose (FR7)', () => {
   test('20 kg, 5 mg/kg -> 100 mg', () => {
     const { totalDose } = calc.calculateWeightDose(20, 5);
@@ -244,6 +275,25 @@ describe('input validation ranges (FR8, Table 4.2)', () => {
   test('rejects zero or negative dose (exclusive minimum)', () => {
     expect(calc.validateNumber(0, 'dosePerUnit').valid).toBe(false);
     expect(calc.validateNumber(-5, 'dosePerUnit').valid).toBe(false);
+  });
+
+  test('accepts a directly entered BSA within range', () => {
+    expect(calc.validateNumber(1.82, 'bsaM2').valid).toBe(true);
+  });
+
+  test('rejects a directly entered BSA below the achievable range', () => {
+    expect(calc.validateNumber(0.01, 'bsaM2').valid).toBe(false);
+  });
+
+  test('rejects a directly entered BSA above the achievable range', () => {
+    expect(calc.validateNumber(10, 'bsaM2').valid).toBe(false);
+  });
+
+  test('the bsaM2 range covers every BSA the Mosteller formula can produce from the weight/height ranges', () => {
+    const minPossibleBsa = calc.calculateBSA(0.5, 30);
+    const maxPossibleBsa = calc.calculateBSA(300, 250);
+    expect(calc.validateNumber(minPossibleBsa, 'bsaM2').valid).toBe(true);
+    expect(calc.validateNumber(maxPossibleBsa, 'bsaM2').valid).toBe(true);
   });
 
   test('rejects non-numeric input', () => {
