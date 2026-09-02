@@ -8,6 +8,20 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api';
 
+// Convert UTC timestamp string to local timezone with padded zeros
+function formatLocalTime(utcTimestamp) {
+  // Parse the UTC string (format: "2026-09-02 14:30:00")
+  const date = new Date(utcTimestamp + 'Z');
+  const pad = (n) => String(n).padStart(2, '0');
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const year = date.getFullYear();
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+}
+
 function defaultDateRange() {
   const to = new Date();
   const from = new Date();
@@ -299,7 +313,7 @@ export default function ReportsPage() {
                   <th>Drug</th>
                   <th>Weight (kg)</th>
                   <th>Height (cm)</th>
-                  <th>BSA (m2)</th>
+                  <th>BSA (m²)</th>
                   <th>Prescribed rate</th>
                   <th>Total dose</th>
                 </tr>
@@ -314,7 +328,7 @@ export default function ReportsPage() {
                 )}
                 {detailedRows.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.created_at}</td>
+                    <td>{formatLocalTime(r.created_at)}</td>
                     <td>{r.identifier_number}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>

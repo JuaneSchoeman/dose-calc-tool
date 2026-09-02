@@ -235,8 +235,10 @@ const MASS_UNITS_TO_GRAMS = {
   mcg: 0.000001, // microgram
   mg: 0.001, // milligram
   cg: 0.01, // centigram
+  dg: 0.1, // decigram
   g: 1, // gram
-  dg: 10, // decagram
+  dkg: 10, // decagram
+  hg: 100, // hectogram
   kg: 1000, // kilogram
   lb: 453.59237, // pound (avoirdupois)
 };
@@ -246,7 +248,9 @@ const MASS_UNIT_LABELS = {
   mg: 'mg (milligram)',
   cg: 'cg (centigram)',
   g: 'g (gram)',
-  dg: 'dg (decagram)',
+  dg: 'dg (decigram)',
+  dkg: 'dkg (decagram)',
+  hg: 'hg (hectogram)',
   kg: 'kg (kilogram)',
   lb: 'lb (pound)',
 };
@@ -254,8 +258,8 @@ const MASS_UNIT_LABELS = {
 /**
  * Convert a mass value between any two supported units.
  * @param {number} value
- * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'kg'|'lb'} fromUnit
- * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'kg'|'lb'} toUnit
+ * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'dkg'|'hg'|'kg'|'lb'} fromUnit
+ * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'dkg'|'hg'|'kg'|'lb'} toUnit
  * @returns {number}
  */
 function convertMass(value, fromUnit, toUnit) {
