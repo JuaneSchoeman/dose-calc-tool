@@ -156,7 +156,7 @@ const FIELD_TO_RANGE = {
 // POST /calc/calculate  (FR4-FR9)
 // body: { category, calcType: 'weight'|'bsa', weightValue, weightUnit,
 //         heightValue?, heightUnit?, bsaInputMode?, bsaValue?, dosePerUnit,
-//         doseMassUnit }
+//         doseMassUnit, drugName? }
 //
 // doseMassUnit is the plain mass unit the dose was prescribed in (e.g.
 // "mg") - one of calc.DOSE_MASS_UNITS. The full prescribing-rate label
@@ -173,6 +173,10 @@ const FIELD_TO_RANGE = {
 //                               (e.g. from a chart) and supplies bsaValue
 //                               directly; weight/height are not required
 //                               and are not stored for that record.
+//
+// drugName is optional free text (e.g. "Paracetamol") so the result can
+// read as "500 mg paracetamol" rather than a bare number; it plays no
+// part in the calculation and is trimmed/length-capped before storage.
 router.post('/calculate', requireLogin, (req, res) => {
   const {
     category,
@@ -185,6 +189,7 @@ router.post('/calculate', requireLogin, (req, res) => {
     bsaValue,
     dosePerUnit,
     doseMassUnit,
+    drugName,
   } = req.body;
 
   // --- FR3 validation ---
@@ -197,6 +202,7 @@ router.post('/calculate', requireLogin, (req, res) => {
   if (!doseCheck.valid) return res.status(400).json({ error: doseCheck.message });
 
   const doseUnit = calc.DOSE_MASS_UNITS.includes(doseMassUnit) ? doseMassUnit : '';
+  const cleanDrugName = typeof drugName === 'string' ? drugName.trim().slice(0, 100) : '';
 
   if (calcType === 'weight') {
     // --- FR8: validate weight ---
@@ -212,10 +218,10 @@ router.post('/calculate', requireLogin, (req, res) => {
     const info = db
       .prepare(
         `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit)
-         VALUES (?, ?, 'weight', ?, NULL, NULL, ?, ?, ?, ?)`
+           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
+         VALUES (?, ?, 'weight', ?, NULL, NULL, ?, ?, ?, ?, ?)`
       )
-      .run(req.session.user.id, category, weightKg, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit);
+      .run(req.session.user.id, category, weightKg, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null);
 
     return res.json({
       calcId: info.lastInsertRowid,
@@ -224,6 +230,7 @@ router.post('/calculate', requireLogin, (req, res) => {
       totalDose,
       doseUnit,
       doseRateLabel,
+      drugName: cleanDrugName,
       steps,
     });
   }
@@ -242,10 +249,10 @@ router.post('/calculate', requireLogin, (req, res) => {
       const info = db
         .prepare(
           `INSERT INTO calculations
-             (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit)
-           VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?)`
+             (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
+           VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?, ?)`
         )
-        .run(req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit);
+        .run(req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null);
 
       return res.json({
         calcId: info.lastInsertRowid,
@@ -255,6 +262,7 @@ router.post('/calculate', requireLogin, (req, res) => {
         totalDose,
         doseUnit,
         doseRateLabel,
+        drugName: cleanDrugName,
         steps,
       });
     }
@@ -279,10 +287,10 @@ router.post('/calculate', requireLogin, (req, res) => {
     const info = db
       .prepare(
         `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit)
-         VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?)`
+           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
+         VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit);
+      .run(req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null);
 
     return res.json({
       calcId: info.lastInsertRowid,
@@ -294,6 +302,7 @@ router.post('/calculate', requireLogin, (req, res) => {
       totalDose,
       doseUnit,
       doseRateLabel,
+      drugName: cleanDrugName,
       steps,
     });
   }
@@ -305,7 +314,7 @@ router.post('/calculate', requireLogin, (req, res) => {
 router.get('/history', requireLogin, (req, res) => {
   const rows = db
     .prepare(
-      `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, created_at
+      `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name, created_at
        FROM calculations WHERE user_id = ? ORDER BY created_at DESC LIMIT 500`
     )
     .all(req.session.user.id);

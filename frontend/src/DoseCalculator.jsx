@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from './api';
 import Formula from './Formula';
 import { sanitizeDecimalInput } from './utils/numberInput';
+import { feetInchesToCm } from './utils/height';
 
 const STEPS = [
   { id: 1, label: '1. Category & type' },
@@ -37,10 +38,13 @@ export default function DoseCalculator() {
   const [weightUnit, setWeightUnit] = useState('kg');
   const [heightValue, setHeightValue] = useState('');
   const [heightUnit, setHeightUnit] = useState('cm');
+  const [heightFeet, setHeightFeet] = useState('');
+  const [heightInches, setHeightInches] = useState('');
   const [bsaInputMode, setBsaInputMode] = useState('measurements');
   const [bsaValue, setBsaValue] = useState('');
   const [dosePerUnit, setDosePerUnit] = useState('');
   const [doseMassUnit, setDoseMassUnit] = useState('mg');
+  const [drugName, setDrugName] = useState('');
   const [massUnits, setMassUnits] = useState([]);
 
   const [weightError, setWeightError] = useState('');
@@ -89,6 +93,26 @@ export default function DoseCalculator() {
     debounce(() => validateField('heightCm', value, setHeightError));
   }
 
+  function handleHeightFeetChange(value) {
+    setHeightFeet(value);
+    if (value === '' && heightInches === '') {
+      setHeightError('');
+      return;
+    }
+    const cm = feetInchesToCm(value, heightInches);
+    debounce(() => validateField('heightCm', cm, setHeightError));
+  }
+
+  function handleHeightInchesChange(value) {
+    setHeightInches(value);
+    if (heightFeet === '' && value === '') {
+      setHeightError('');
+      return;
+    }
+    const cm = feetInchesToCm(heightFeet, value);
+    debounce(() => validateField('heightCm', cm, setHeightError));
+  }
+
   function handleBsaChange(value) {
     setBsaValue(value);
     debounce(() => validateField('bsaM2', value, setBsaError));
@@ -114,10 +138,13 @@ export default function DoseCalculator() {
     setWeightUnit('kg');
     setHeightValue('');
     setHeightUnit('cm');
+    setHeightFeet('');
+    setHeightInches('');
     setBsaInputMode('measurements');
     setBsaValue('');
     setDosePerUnit('');
     setDoseMassUnit('mg');
+    setDrugName('');
     setWeightError('');
     setHeightError('');
     setBsaError('');
@@ -128,6 +155,11 @@ export default function DoseCalculator() {
     e.preventDefault();
     setFormError('');
     setCalculating(true);
+    // Feet+inches is a UI-only input mode (see utils/height.js) - it's
+    // combined into a single cm value here so the backend only ever has
+    // to deal with the "cm" and "inch" units it already understands.
+    const effectiveHeightUnit = heightUnit === 'ftin' ? 'cm' : heightUnit;
+    const effectiveHeightValue = heightUnit === 'ftin' ? feetInchesToCm(heightFeet, heightInches) : heightValue;
     try {
       const res = await apiFetch('/calc/calculate', {
         method: 'POST',
@@ -136,12 +168,13 @@ export default function DoseCalculator() {
           calcType,
           weightValue,
           weightUnit,
-          heightValue,
-          heightUnit,
+          heightValue: effectiveHeightValue,
+          heightUnit: effectiveHeightUnit,
           bsaInputMode,
           bsaValue,
           dosePerUnit,
           doseMassUnit,
+          drugName,
         }),
       });
       setResult(res);
@@ -331,7 +364,67 @@ export default function DoseCalculator() {
               <label htmlFor="heightValue">
                 Patient height <span className="required-tag">*</span>
               </label>
-              <div className="input-with-unit">
+              <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit" style={{ marginBottom: 8 }}>
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="height-cm"
+                    name="heightUnit"
+                    value="cm"
+                    checked={heightUnit === 'cm'}
+                    onChange={() => setHeightUnit('cm')}
+                  />
+                  <label htmlFor="height-cm">cm</label>
+                </div>
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="height-inch"
+                    name="heightUnit"
+                    value="inch"
+                    checked={heightUnit === 'inch'}
+                    onChange={() => setHeightUnit('inch')}
+                  />
+                  <label htmlFor="height-inch">inch</label>
+                </div>
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="height-ftin"
+                    name="heightUnit"
+                    value="ftin"
+                    checked={heightUnit === 'ftin'}
+                    onChange={() => setHeightUnit('ftin')}
+                  />
+                  <label htmlFor="height-ftin">ft + in</label>
+                </div>
+              </div>
+
+              {heightUnit === 'ftin' ? (
+                <div className="ft-in-row">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    id="heightFeet"
+                    aria-label="Feet"
+                    placeholder="ft"
+                    required
+                    value={heightFeet}
+                    onChange={(e) => handleHeightFeetChange(sanitizeDecimalInput(e.target.value))}
+                  />
+                  <span className="dose-unit-suffix">ft</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    id="heightInches"
+                    aria-label="Inches"
+                    placeholder="in"
+                    value={heightInches}
+                    onChange={(e) => handleHeightInchesChange(sanitizeDecimalInput(e.target.value))}
+                  />
+                  <span className="dose-unit-suffix">in</span>
+                </div>
+              ) : (
                 <input
                   type="text"
                   inputMode="decimal"
@@ -340,32 +433,9 @@ export default function DoseCalculator() {
                   value={heightValue}
                   onChange={(e) => handleHeightChange(sanitizeDecimalInput(e.target.value))}
                 />
-                <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit">
-                  <div className="choice-option">
-                    <input
-                      type="radio"
-                      id="height-cm"
-                      name="heightUnit"
-                      value="cm"
-                      checked={heightUnit === 'cm'}
-                      onChange={() => setHeightUnit('cm')}
-                    />
-                    <label htmlFor="height-cm">cm</label>
-                  </div>
-                  <div className="choice-option">
-                    <input
-                      type="radio"
-                      id="height-inch"
-                      name="heightUnit"
-                      value="inch"
-                      checked={heightUnit === 'inch'}
-                      onChange={() => setHeightUnit('inch')}
-                    />
-                    <label htmlFor="height-inch">inch</label>
-                  </div>
-                </div>
-              </div>
-              <p className="help-text">Valid range: 30-250 cm.</p>
+              )}
+
+              <p className="help-text">Valid range: 30-250 cm (about 1 ft to 8 ft 2 in).</p>
               <p className="field-error">{heightError}</p>
             </div>
           )}
@@ -423,6 +493,21 @@ export default function DoseCalculator() {
             </p>
             <p className="field-error">{doseError}</p>
           </div>
+
+          <div className="field-group grouped">
+            <label htmlFor="drugName">
+              Medication name <span className="optional-tag">(optional)</span>
+            </label>
+            <input
+              type="text"
+              id="drugName"
+              maxLength={100}
+              placeholder="e.g. Paracetamol"
+              value={drugName}
+              onChange={(e) => setDrugName(e.target.value)}
+            />
+            <p className="help-text">Shown alongside the result, e.g. "500 mg paracetamol".</p>
+          </div>
           </div>
 
           <div className="btn-row">
@@ -454,6 +539,7 @@ export default function DoseCalculator() {
             <p style={{ margin: 0 }}>Total dose</p>
             <p className="result-value">
               {result.totalDose} {result.doseUnit || ''}
+              {result.drugName ? ` ${result.drugName}` : ''}
             </p>
             {result.doseRateLabel && (
               <p className="help-text" style={{ marginTop: 8 }}>

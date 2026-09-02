@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS users (
 // displayed without that suffix. dose_rate_label is the separate, full
 // prescribing-rate label (e.g. "mg/m2") that pairs with dose_per_unit, kept
 // so the original prescribed rate remains visible in the audit trail.
+// drug_name is an optional, free-text medication name (e.g. "Paracetamol")
+// so the result can be shown/audited as e.g. "500 mg paracetamol" rather
+// than a bare number - it is never required and plays no part in the
+// calculation itself.
 db.exec(`
 CREATE TABLE IF NOT EXISTS calculations (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,17 +55,21 @@ CREATE TABLE IF NOT EXISTS calculations (
   dose_rate_label TEXT,
   total_dose      REAL NOT NULL,
   dose_unit       TEXT NOT NULL,
+  drug_name       TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
 
-// Migration guard: a database created before dose_rate_label existed won't
-// have the column yet. ALTER TABLE ADD COLUMN is safe to run repeatedly
-// once guarded like this, and leaves existing rows' dose_rate_label as
-// NULL rather than losing any data.
+// Migration guard: a database created before dose_rate_label/drug_name
+// existed won't have those columns yet. ALTER TABLE ADD COLUMN is safe to
+// run repeatedly once guarded like this, and leaves existing rows' new
+// columns as NULL rather than losing any data.
 const calculationColumns = db.prepare('PRAGMA table_info(calculations)').all();
 if (!calculationColumns.some((col) => col.name === 'dose_rate_label')) {
   db.exec('ALTER TABLE calculations ADD COLUMN dose_rate_label TEXT;');
+}
+if (!calculationColumns.some((col) => col.name === 'drug_name')) {
+  db.exec('ALTER TABLE calculations ADD COLUMN drug_name TEXT;');
 }
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id);`);

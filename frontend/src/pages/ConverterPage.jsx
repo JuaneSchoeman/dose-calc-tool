@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api';
 import Formula from '../Formula';
 import { sanitizeDecimalInput } from '../utils/numberInput';
+import { feetInchesToCm, cmToFeetInches } from '../utils/height';
 
 const TABS = [
   { id: 'mass', label: 'Mass converter' },
@@ -173,10 +174,18 @@ function MassConverter() {
   );
 }
 
-/* --- Height converter (mm/cm/inch/ft/m) ------------------------------------ */
+/* --- Height converter (mm/cm/inch/ft/m/ft+in) ------------------------------ */
+// "ft + in" is a compound value (two numbers), so it's handled as a
+// frontend-only pseudo-unit layered on top of the backend's plain length
+// units: converting *from* ft+in combines the two fields into a single cm
+// value before calling the API (fromUnit becomes 'cm'); converting *to*
+// ft+in asks the API for a plain cm result (toUnit becomes 'cm') and splits
+// that back into feet/inches for display. See utils/height.js.
 function HeightConverter() {
   const [units, setUnits] = useState([]);
   const [value, setValue] = useState('');
+  const [fromFeet, setFromFeet] = useState('');
+  const [fromInches, setFromInches] = useState('');
   const [fromUnit, setFromUnit] = useState('cm');
   const [toUnit, setToUnit] = useState('inch');
   const [result, setResult] = useState(null);
@@ -185,13 +194,14 @@ function HeightConverter() {
 
   useEffect(() => {
     apiFetch('/calc/length-units')
-      .then(({ units: list }) => setUnits(list))
+      .then(({ units: list }) => setUnits([...list, { key: 'ftin', label: 'ft + in' }]))
       .catch((err) => setError(err.message));
   }, []);
 
   useEffect(() => {
     clearTimeout(debounceTimer.current);
-    if (value === '') {
+    const hasInput = fromUnit === 'ftin' ? fromFeet !== '' || fromInches !== '' : value !== '';
+    if (!hasInput) {
       setResult(null);
       setError('');
       return;
@@ -199,16 +209,24 @@ function HeightConverter() {
     debounceTimer.current = setTimeout(runConversion, 250);
     return () => clearTimeout(debounceTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, fromUnit, toUnit]);
+  }, [value, fromFeet, fromInches, fromUnit, toUnit]);
 
   async function runConversion() {
     setError('');
+    const apiFromUnit = fromUnit === 'ftin' ? 'cm' : fromUnit;
+    const apiValue = fromUnit === 'ftin' ? feetInchesToCm(fromFeet, fromInches) : value;
+    const apiToUnit = toUnit === 'ftin' ? 'cm' : toUnit;
     try {
       const res = await apiFetch('/calc/convert-length', {
         method: 'POST',
-        body: JSON.stringify({ value, fromUnit, toUnit }),
+        body: JSON.stringify({ value: apiValue, fromUnit: apiFromUnit, toUnit: apiToUnit }),
       });
-      setResult(res);
+      if (toUnit === 'ftin') {
+        const { feet, inches } = cmToFeetInches(res.result);
+        setResult({ ...res, toUnit: 'ftin', ftInResult: { feet, inches } });
+      } else {
+        setResult(res);
+      }
     } catch (err) {
       setResult(null);
       setError(err.message);
@@ -223,24 +241,49 @@ function HeightConverter() {
   return (
     <div>
       <p className="subtitle">
-        Convert patient height / length between millimetres, centimetres, inches, feet, and
-        metres.
+        Convert patient height / length between millimetres, centimetres, inches, feet, metres,
+        and feet+inches.
       </p>
 
       {error && <div className="alert alert-error" role="alert">{error}</div>}
 
       <div className="field-group grouped">
-        <label htmlFor="heightConvertValue">
+        <label htmlFor={fromUnit === 'ftin' ? 'heightConvertFeet' : 'heightConvertValue'}>
           Value <span className="required-tag">*</span>
         </label>
-        <input
-          type="text"
-          inputMode="decimal"
-          id="heightConvertValue"
-          value={value}
-          onChange={(e) => setValue(sanitizeDecimalInput(e.target.value))}
-          placeholder="e.g. 170"
-        />
+        {fromUnit === 'ftin' ? (
+          <div className="ft-in-row">
+            <input
+              type="text"
+              inputMode="decimal"
+              id="heightConvertFeet"
+              aria-label="Feet"
+              placeholder="ft"
+              value={fromFeet}
+              onChange={(e) => setFromFeet(sanitizeDecimalInput(e.target.value))}
+            />
+            <span className="dose-unit-suffix">ft</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              id="heightConvertInches"
+              aria-label="Inches"
+              placeholder="in"
+              value={fromInches}
+              onChange={(e) => setFromInches(sanitizeDecimalInput(e.target.value))}
+            />
+            <span className="dose-unit-suffix">in</span>
+          </div>
+        ) : (
+          <input
+            type="text"
+            inputMode="decimal"
+            id="heightConvertValue"
+            value={value}
+            onChange={(e) => setValue(sanitizeDecimalInput(e.target.value))}
+            placeholder="e.g. 170"
+          />
+        )}
       </div>
 
       <div className="input-with-unit" style={{ alignItems: 'flex-end' }}>
@@ -278,14 +321,27 @@ function HeightConverter() {
         </div>
       </div>
 
-      {result && (
+      {result && toUnit === 'ftin' && (
+        <div className="calc-result">
+          <p style={{ margin: 0 }}>Result</p>
+          <p className="result-value">
+            {result.ftInResult.feet} ft {result.ftInResult.inches} in
+          </p>
+          <p className="help-text" style={{ marginTop: 8 }}>
+            {fromUnit === 'ftin' ? `${fromFeet || 0} ft ${fromInches || 0} in` : `${result.value} ${result.fromUnit}`} ={' '}
+            {result.ftInResult.feet} ft {result.ftInResult.inches} in
+          </p>
+        </div>
+      )}
+      {result && toUnit !== 'ftin' && (
         <div className="calc-result">
           <p style={{ margin: 0 }}>Result</p>
           <p className="result-value">
             {result.result} {result.toUnit}
           </p>
           <p className="help-text" style={{ marginTop: 8 }}>
-            {result.value} {result.fromUnit} = {result.result} {result.toUnit}
+            {fromUnit === 'ftin' ? `${fromFeet || 0} ft ${fromInches || 0} in` : `${result.value} ${result.fromUnit}`} ={' '}
+            {result.result} {result.toUnit}
           </p>
         </div>
       )}
@@ -301,6 +357,8 @@ function BsaCalculator() {
   const [weightUnit, setWeightUnit] = useState('kg');
   const [heightValue, setHeightValue] = useState('');
   const [heightUnit, setHeightUnit] = useState('cm');
+  const [heightFeet, setHeightFeet] = useState('');
+  const [heightInches, setHeightInches] = useState('');
 
   const [weightError, setWeightError] = useState('');
   const [heightError, setHeightError] = useState('');
@@ -341,9 +399,35 @@ function BsaCalculator() {
     heightTimer.current = setTimeout(() => validateField('heightCm', value, setHeightError), 300);
   }
 
+  function handleHeightFeetChange(value) {
+    setHeightFeet(value);
+    setResult(null);
+    clearTimeout(heightTimer.current);
+    if (value === '' && heightInches === '') {
+      setHeightError('');
+      return;
+    }
+    const cm = feetInchesToCm(value, heightInches);
+    heightTimer.current = setTimeout(() => validateField('heightCm', cm, setHeightError), 300);
+  }
+
+  function handleHeightInchesChange(value) {
+    setHeightInches(value);
+    setResult(null);
+    clearTimeout(heightTimer.current);
+    if (heightFeet === '' && value === '') {
+      setHeightError('');
+      return;
+    }
+    const cm = feetInchesToCm(heightFeet, value);
+    heightTimer.current = setTimeout(() => validateField('heightCm', cm, setHeightError), 300);
+  }
+
   function reset() {
     setWeightValue('');
     setHeightValue('');
+    setHeightFeet('');
+    setHeightInches('');
     setWeightUnit('kg');
     setHeightUnit('cm');
     setWeightError('');
@@ -356,10 +440,17 @@ function BsaCalculator() {
     e.preventDefault();
     setFormError('');
     setCalculating(true);
+    const effectiveHeightUnit = heightUnit === 'ftin' ? 'cm' : heightUnit;
+    const effectiveHeightValue = heightUnit === 'ftin' ? feetInchesToCm(heightFeet, heightInches) : heightValue;
     try {
       const res = await apiFetch('/calc/bsa-only', {
         method: 'POST',
-        body: JSON.stringify({ weightValue, weightUnit, heightValue, heightUnit }),
+        body: JSON.stringify({
+          weightValue,
+          weightUnit,
+          heightValue: effectiveHeightValue,
+          heightUnit: effectiveHeightUnit,
+        }),
       });
       setResult(res);
     } catch (err) {
@@ -433,7 +524,67 @@ function BsaCalculator() {
             <label htmlFor="bsaHeightValue">
               Patient height <span className="required-tag">*</span>
             </label>
-            <div className="input-with-unit">
+            <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit" style={{ marginBottom: 8 }}>
+              <div className="choice-option">
+                <input
+                  type="radio"
+                  id="bsa-height-cm"
+                  name="bsaHeightUnit"
+                  value="cm"
+                  checked={heightUnit === 'cm'}
+                  onChange={() => setHeightUnit('cm')}
+                />
+                <label htmlFor="bsa-height-cm">cm</label>
+              </div>
+              <div className="choice-option">
+                <input
+                  type="radio"
+                  id="bsa-height-inch"
+                  name="bsaHeightUnit"
+                  value="inch"
+                  checked={heightUnit === 'inch'}
+                  onChange={() => setHeightUnit('inch')}
+                />
+                <label htmlFor="bsa-height-inch">inch</label>
+              </div>
+              <div className="choice-option">
+                <input
+                  type="radio"
+                  id="bsa-height-ftin"
+                  name="bsaHeightUnit"
+                  value="ftin"
+                  checked={heightUnit === 'ftin'}
+                  onChange={() => setHeightUnit('ftin')}
+                />
+                <label htmlFor="bsa-height-ftin">ft + in</label>
+              </div>
+            </div>
+
+            {heightUnit === 'ftin' ? (
+              <div className="ft-in-row">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  id="bsaHeightFeet"
+                  aria-label="Feet"
+                  placeholder="ft"
+                  required
+                  value={heightFeet}
+                  onChange={(e) => handleHeightFeetChange(sanitizeDecimalInput(e.target.value))}
+                />
+                <span className="dose-unit-suffix">ft</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  id="bsaHeightInches"
+                  aria-label="Inches"
+                  placeholder="in"
+                  value={heightInches}
+                  onChange={(e) => handleHeightInchesChange(sanitizeDecimalInput(e.target.value))}
+                />
+                <span className="dose-unit-suffix">in</span>
+              </div>
+            ) : (
               <input
                 type="text"
                 inputMode="decimal"
@@ -442,32 +593,8 @@ function BsaCalculator() {
                 value={heightValue}
                 onChange={(e) => handleHeightChange(sanitizeDecimalInput(e.target.value))}
               />
-              <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit">
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="bsa-height-cm"
-                    name="bsaHeightUnit"
-                    value="cm"
-                    checked={heightUnit === 'cm'}
-                    onChange={() => setHeightUnit('cm')}
-                  />
-                  <label htmlFor="bsa-height-cm">cm</label>
-                </div>
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="bsa-height-inch"
-                    name="bsaHeightUnit"
-                    value="inch"
-                    checked={heightUnit === 'inch'}
-                    onChange={() => setHeightUnit('inch')}
-                  />
-                  <label htmlFor="bsa-height-inch">inch</label>
-                </div>
-              </div>
-            </div>
-            <p className="help-text">Valid range: 30-250 cm.</p>
+            )}
+            <p className="help-text">Valid range: 30-250 cm (about 1 ft to 8 ft 2 in).</p>
             <p className="field-error">{heightError}</p>
           </div>
         </div>

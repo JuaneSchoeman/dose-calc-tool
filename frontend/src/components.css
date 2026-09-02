@@ -199,11 +199,24 @@ select:focus {
   font-weight: 600;
   white-space: nowrap;
 }
+.ft-in-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ft-in-row input {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 70px;
+}
 
 @media (max-width: 420px) {
   .input-with-unit {
     flex-direction: column;
     align-items: stretch;
+  }
+  .ft-in-row {
+    flex-wrap: wrap;
   }
 }
 

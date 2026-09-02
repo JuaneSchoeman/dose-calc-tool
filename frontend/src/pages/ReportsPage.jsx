@@ -296,6 +296,7 @@ export default function ReportsPage() {
                   <th>Identifying number</th>
                   <th>Department</th>
                   <th>Type</th>
+                  <th>Drug</th>
                   <th>Weight (kg)</th>
                   <th>Height (cm)</th>
                   <th>BSA (m2)</th>
@@ -306,7 +307,7 @@ export default function ReportsPage() {
               <tbody>
                 {detailedRows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="help-text">
+                    <td colSpan={10} className="help-text">
                       No calculations match these filters in this period.
                     </td>
                   </tr>
@@ -317,6 +318,7 @@ export default function ReportsPage() {
                     <td>{r.identifier_number}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>
+                    <td>{r.drug_name || '-'}</td>
                     <td>{r.weight_kg ?? '-'}</td>
                     <td>{r.height_cm ?? '-'}</td>
                     <td>{r.bsa_m2 ?? '-'}</td>
