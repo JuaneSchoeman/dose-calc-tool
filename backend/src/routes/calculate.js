@@ -10,14 +10,12 @@ const { validateWeight, validateHeight, validateDose } = require('../validation'
 const { requireAuth } = require('../middleware/auth');
 
 const CATEGORIES = [
-  'General',
   'Adult Medical/Surgical',
   'Oncology',
   'Outpatient/Ambulatory',
-  'Intensive Care',
-  'Emergency Department',
+  'ICU',
+  'Emergency',
   'Paediatrics',
-  'Pharmacy',
 ];
 
 function createCalculateRouter(db) {

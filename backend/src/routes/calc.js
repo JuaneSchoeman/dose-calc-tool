@@ -16,14 +16,12 @@ const router = express.Router();
 
 // FR3: clinical categories offered to the user (matches Table 3-1 areas)
 const CATEGORIES = [
-  'General',
   'Adult Medical/Surgical',
   'Oncology',
   'Outpatient/Ambulatory',
   'Intensive Care',
   'Emergency Department',
   'Paediatrics',
-  'Pharmacy',
 ];
 
 router.get('/categories', requireLogin, (req, res) => {

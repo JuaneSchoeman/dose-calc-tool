@@ -60,13 +60,7 @@ export default function DoseCalculator() {
 
   useEffect(() => {
     apiFetch('/calc/categories')
-      .then(({ categories: cats }) => {
-        setCategories(cats);
-        // Set default category to 'General' if it exists
-        if (cats.includes('General')) {
-          setCategory('General');
-        }
-      })
+      .then(({ categories: cats }) => setCategories(cats))
       .catch((err) => setFormError(err.message));
     apiFetch('/calc/dose-units')
       .then(({ units }) => setMassUnits(units))

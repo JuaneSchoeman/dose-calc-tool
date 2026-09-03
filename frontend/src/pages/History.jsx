@@ -1,20 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-// Convert UTC timestamp string to local timezone with padded zeros
-function formatLocalTime(utcTimestamp) {
-  // Parse the UTC string (format: "2026-09-02 14:30:00")
-  const date = new Date(utcTimestamp + 'Z');
-  const pad = (n) => String(n).padStart(2, '0');
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const year = date.getFullYear();
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
-  return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
-}
-
 function tagClass(category) {
   return `tag tag-${category.replace(/\//g, '\\/')}`;
 }
@@ -70,7 +56,7 @@ export default function History() {
           <tbody>
             {history.map((row) => (
               <tr key={row.id}>
-                <td className="num-cell" style={{ textAlign: 'left' }}>{formatLocalTime(row.createdAt)}</td>
+                <td className="num-cell" style={{ textAlign: 'left' }}>{row.createdAt}</td>
                 <td><span className={tagClass(row.category)}>{row.category}</span></td>
                 <td>{row.calcType === 'weight-based' ? 'Weight-based' : 'BSA-based'}</td>
                 <td className="num-cell">{row.result}</td>

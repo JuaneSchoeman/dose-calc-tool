@@ -5,20 +5,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../api';
 
-// Convert UTC timestamp string to local timezone with padded zeros
-function formatLocalTime(utcTimestamp) {
-  // Parse the UTC string (format: "2026-09-02 14:30:00")
-  const date = new Date(utcTimestamp + 'Z');
-  const pad = (n) => String(n).padStart(2, '0');
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const year = date.getFullYear();
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
-  return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
-}
-
 const COLUMNS = [
   { key: 'created_at', label: 'Date/time' },
   { key: 'category', label: 'Category' },
@@ -26,7 +12,7 @@ const COLUMNS = [
   { key: 'drug_name', label: 'Drug' },
   { key: 'weight_kg', label: 'Weight (kg)' },
   { key: 'height_cm', label: 'Height (cm)' },
-  { key: 'bsa_m2', label: 'BSA (m²)' },
+  { key: 'bsa_m2', label: 'BSA (m2)' },
   { key: 'dose_per_unit', label: 'Prescribed rate' },
   { key: 'total_dose', label: 'Total dose' },
 ];
@@ -95,7 +81,7 @@ export default function HistoryPage() {
               <tbody>
                 {sortedRows.map((r) => (
                   <tr key={r.id}>
-                    <td>{formatLocalTime(r.created_at)}</td>
+                    <td>{r.created_at}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>
                     <td>{r.drug_name || '-'}</td>

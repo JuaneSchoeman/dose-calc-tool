@@ -145,11 +145,56 @@ frontend/
     tokens.css, components.css, App.css, index.css
 ```
 
+## Deployment
+
+In production, the backend serves the built frontend itself, so the whole
+app - UI and API - lives at **one URL**. The API is namespaced under `/api`
+specifically so it can never collide with the frontend's own page routes
+(e.g. the `/reports` *page* vs an API route of the same name) once both are
+served from the same origin.
+
+Steps, using [Render](https://render.com) as an example (Railway and Fly.io
+work the same way in principle):
+
+1. Push this project to a GitHub repo.
+2. Create a new **Web Service** on Render, pointing at that repo.
+3. Set:
+   - **Root Directory**: the folder containing this README (leave blank if
+     it's the repo root)
+   - **Build Command**: `npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend`
+   - **Start Command**: `npm start --prefix backend`
+4. Add environment variables (Render → your service → Environment):
+   - `NODE_ENV=production`
+   - `SESSION_SECRET` - a long random string
+   - `ADMIN_IDENTIFIER_NUMBER`, `ADMIN_PASSWORD` (and optionally `ADMIN_EMAIL`)
+   - `CLIENT_ORIGIN` - can be left as-is; it's only used for CORS, which
+     isn't exercised once the frontend is served from the same origin
+5. Deploy. Render gives you a URL like `https://your-app.onrender.com` -
+   that's the one link for the whole app.
+
+**A note on the database:** this app uses a local SQLite file
+(`backend/data/dosecalc.db`). Most free-tier hosting plans use an
+**ephemeral filesystem** - the file (and everything in it) is wiped on every
+redeploy or restart. That's fine for demoing the artefact, but if you need
+data to persist:
+
+- Render: add a paid [persistent Disk](https://render.com/docs/disks)
+  mounted at `backend/data`.
+- Railway / Fly.io: attach a persistent volume the same way.
+- Alternatively, swap SQLite for a hosted database (e.g. Postgres) - a
+  larger change, not needed just to get a working link.
+
+Running two separate services (frontend as a static site, backend as a
+separate API service) also still works with no code changes - just set
+`VITE_API_URL` at frontend build time to the backend's URL, and
+`CLIENT_ORIGIN` on the backend to the frontend's URL. The single-service
+approach above is simpler and avoids a subtlety with session cookies across
+two different `*.onrender.com`-style subdomains, so it's the recommended
+default.
+
 ## Suggested next steps
 
 - Add a small Playwright/Cypress suite covering the registration -> login ->
   calculate -> history flow end-to-end through the browser.
 - Wrap the AI-assisted verification transcripts (mathematical + usability)
   as an appendix, per Section 2.7 of the methodology.
-- Enable `cookie.secure = true` and HTTPS before any deployment beyond
-  localhost testing.
