@@ -19,73 +19,82 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IDENTIFIER_RE = /^[A-Za-z0-9/-]{4,20}$/;
 
 // POST /auth/register  (FR1)
-router.post('/register', (req, res) => {
-  const { identifierNumber, email, password, confirmPassword } = req.body;
+router.post('/register', async (req, res, next) => {
+  try {
+    const { identifierNumber, email, password, confirmPassword } = req.body;
 
-  if (!identifierNumber || !IDENTIFIER_RE.test(identifierNumber.trim())) {
-    return res.status(400).json({
-      error: 'Please provide a valid identifying number (4-20 letters, digits, "-" or "/").',
+    if (!identifierNumber || !IDENTIFIER_RE.test(identifierNumber.trim())) {
+      return res.status(400).json({
+        error: 'Please provide a valid identifying number (4-20 letters, digits, "-" or "/").',
+      });
+    }
+    if (email && !EMAIL_RE.test(email)) {
+      return res.status(400).json({ error: 'Please provide a valid email address, or leave it blank.' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match.' });
+    }
+
+    const normalisedIdentifier = identifierNumber.trim();
+    const normalisedEmail = email ? email.toLowerCase().trim() : null;
+
+    const existing = await db.get(
+      'SELECT id FROM users WHERE identifier_number = ?',
+      [normalisedIdentifier]
+    );
+    if (existing) {
+      return res.status(409).json({ error: 'An account with that identifying number already exists.' });
+    }
+
+    const hash = bcrypt.hashSync(password, 12); // NFR8
+    const info = await db.run(
+      'INSERT INTO users (identifier_number, email, password_hash, role) VALUES (?, ?, ?, ?)',
+      [normalisedIdentifier, normalisedEmail, hash, 'standard']
+    );
+
+    return res.status(201).json({
+      message: 'Account created. You can now log in.',
+      userId: info.lastInsertRowid,
     });
+  } catch (err) {
+    return next(err);
   }
-  if (email && !EMAIL_RE.test(email)) {
-    return res.status(400).json({ error: 'Please provide a valid email address, or leave it blank.' });
-  }
-  if (!password || password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
-  }
-  if (password !== confirmPassword) {
-    return res.status(400).json({ error: 'Passwords do not match.' });
-  }
-
-  const normalisedIdentifier = identifierNumber.trim();
-  const normalisedEmail = email ? email.toLowerCase().trim() : null;
-
-  const existing = db
-    .prepare('SELECT id FROM users WHERE identifier_number = ?')
-    .get(normalisedIdentifier);
-  if (existing) {
-    return res.status(409).json({ error: 'An account with that identifying number already exists.' });
-  }
-
-  const hash = bcrypt.hashSync(password, 12); // NFR8
-  const info = db
-    .prepare(
-      'INSERT INTO users (identifier_number, email, password_hash, role) VALUES (?, ?, ?, ?)'
-    )
-    .run(normalisedIdentifier, normalisedEmail, hash, 'standard');
-
-  return res.status(201).json({
-    message: 'Account created. You can now log in.',
-    userId: info.lastInsertRowid,
-  });
 });
 
 // POST /auth/login  (FR2)
-router.post('/login', (req, res) => {
-  const { identifierNumber, password } = req.body;
+router.post('/login', async (req, res, next) => {
+  try {
+    const { identifierNumber, password } = req.body;
 
-  if (!identifierNumber || !password) {
-    return res.status(400).json({ error: 'Identifying number and password are required.' });
+    if (!identifierNumber || !password) {
+      return res.status(400).json({ error: 'Identifying number and password are required.' });
+    }
+
+    const user = await db.get(
+      'SELECT * FROM users WHERE identifier_number = ?',
+      [String(identifierNumber).trim()]
+    );
+
+    const passwordOk = user && bcrypt.compareSync(password, user.password_hash);
+
+    if (!passwordOk) {
+      // Deliberately generic message - do not reveal whether the identifier exists.
+      return res.status(401).json({ error: 'Invalid identifying number or password.' });
+    }
+
+    req.session.user = {
+      id: user.id,
+      identifierNumber: user.identifier_number,
+      email: user.email,
+      role: user.role,
+    };
+    return res.json({ message: 'Logged in.', user: req.session.user });
+  } catch (err) {
+    return next(err);
   }
-
-  const user = db
-    .prepare('SELECT * FROM users WHERE identifier_number = ?')
-    .get(String(identifierNumber).trim());
-
-  const passwordOk = user && bcrypt.compareSync(password, user.password_hash);
-
-  if (!passwordOk) {
-    // Deliberately generic message - do not reveal whether the identifier exists.
-    return res.status(401).json({ error: 'Invalid identifying number or password.' });
-  }
-
-  req.session.user = {
-    id: user.id,
-    identifierNumber: user.identifier_number,
-    email: user.email,
-    role: user.role,
-  };
-  return res.json({ message: 'Logged in.', user: req.session.user });
 });
 
 // POST /auth/logout

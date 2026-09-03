@@ -177,8 +177,9 @@ const FIELD_TO_RANGE = {
 // drugName is optional free text (e.g. "Paracetamol") so the result can
 // read as "500 mg paracetamol" rather than a bare number; it plays no
 // part in the calculation and is trimmed/length-capped before storage.
-router.post('/calculate', requireLogin, (req, res) => {
-  const {
+router.post('/calculate', requireLogin, async (req, res, next) => {
+  try {
+    const {
     category,
     calcType,
     weightValue,
@@ -215,13 +216,12 @@ router.post('/calculate', requireLogin, (req, res) => {
     const { totalDose, steps } = calc.calculateWeightDose(weightKg, Number(dosePerUnit));
     const doseRateLabel = doseUnit ? `${doseUnit}/kg` : '';
 
-    const info = db
-      .prepare(
-        `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
-         VALUES (?, ?, 'weight', ?, NULL, NULL, ?, ?, ?, ?, ?)`
-      )
-      .run(req.session.user.id, category, weightKg, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null);
+    const info = await db.run(
+      `INSERT INTO calculations
+         (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
+       VALUES (?, ?, 'weight', ?, NULL, NULL, ?, ?, ?, ?, ?)`,
+      [req.session.user.id, category, weightKg, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null]
+    );
 
     return res.json({
       calcId: info.lastInsertRowid,
@@ -246,13 +246,12 @@ router.post('/calculate', requireLogin, (req, res) => {
       const bsa = calc.round(Number(bsaValue), 4);
       const { totalDose, steps } = calc.calculateDoseFromDirectBsa(bsa, Number(dosePerUnit));
 
-      const info = db
-        .prepare(
-          `INSERT INTO calculations
-             (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
-           VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?, ?)`
-        )
-        .run(req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null);
+      const info = await db.run(
+        `INSERT INTO calculations
+           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
+         VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+        [req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null]
+      );
 
       return res.json({
         calcId: info.lastInsertRowid,
@@ -284,13 +283,12 @@ router.post('/calculate', requireLogin, (req, res) => {
 
     const { bsa, totalDose, steps } = calc.calculateBsaDose(weightKg, heightCm, Number(dosePerUnit));
 
-    const info = db
-      .prepare(
-        `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
-         VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null);
+    const info = await db.run(
+      `INSERT INTO calculations
+         (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
+       VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null]
+    );
 
     return res.json({
       calcId: info.lastInsertRowid,
@@ -307,18 +305,24 @@ router.post('/calculate', requireLogin, (req, res) => {
     });
   }
 
-  return res.status(400).json({ error: 'calcType must be "weight" or "bsa".' });
+    return res.status(400).json({ error: 'calcType must be "weight" or "bsa".' });
+  } catch (err) {
+    return next(err);
+  }
 });
 
 // GET /calc/history  (FR12) - the logged-in user's own past calculations only
-router.get('/history', requireLogin, (req, res) => {
-  const rows = db
-    .prepare(
+router.get('/history', requireLogin, async (req, res, next) => {
+  try {
+    const rows = await db.all(
       `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name, created_at
-       FROM calculations WHERE user_id = ? ORDER BY created_at DESC LIMIT 500`
-    )
-    .all(req.session.user.id);
-  res.json({ history: rows });
+       FROM calculations WHERE user_id = ? ORDER BY created_at DESC LIMIT 500`,
+      [req.session.user.id]
+    );
+    res.json({ history: rows });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

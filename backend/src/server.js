@@ -16,7 +16,7 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 
-require('./db'); // ensures schema + admin seed (FR15) run on start-up
+const db = require('./db');
 
 const authRoutes = require('./routes/auth');
 const calcRoutes = require('./routes/calc');
@@ -93,11 +93,22 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong on the server. Please try again.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Dose-calculation server running at http://localhost:${PORT}`);
-  if (fs.existsSync(frontendDist)) {
-    console.log('Serving the built frontend from frontend/dist alongside the API.');
-  } else {
-    console.log(`API only (no frontend/dist found) - accepting requests from: ${CLIENT_ORIGIN}`);
-  }
-});
+// db.initDb() creates the schema and seeds the initial admin account (FR15)
+// against Turso. This is now async (a network call), so the server must
+// wait for it to finish before it starts accepting requests - otherwise the
+// very first request could race against table creation.
+db.initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Dose-calculation server running at http://localhost:${PORT}`);
+      if (fs.existsSync(frontendDist)) {
+        console.log('Serving the built frontend from frontend/dist alongside the API.');
+      } else {
+        console.log(`API only (no frontend/dist found) - accepting requests from: ${CLIENT_ORIGIN}`);
+      }
+    });
+  })
+  .catch((err) => {
+    console.error('[server] Failed to initialise the database - server not started.', err);
+    process.exit(1);
+  });
