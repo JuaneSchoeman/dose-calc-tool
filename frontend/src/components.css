@@ -59,6 +59,57 @@
   margin-right: var(--space-1);
 }
 
+/* --- Background mode toggle (clinical / themed) ------------------------- */
+.bg-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  user-select: none;
+}
+.bg-mode-toggle-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-muted);
+}
+.bg-mode-toggle input[type='checkbox'] {
+  /* Hidden but still focusable/clickable and read by screen readers;
+     the visual switch is the track/thumb spans below it. */
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.bg-mode-toggle-track {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-border);
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+.bg-mode-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgba(23, 48, 61, 0.3);
+  transition: transform 0.15s ease;
+}
+.bg-mode-toggle input:checked + .bg-mode-toggle-track {
+  background: var(--color-brand-cyan);
+}
+.bg-mode-toggle input:checked + .bg-mode-toggle-track .bg-mode-toggle-thumb {
+  transform: translateX(18px);
+}
+.bg-mode-toggle input:focus-visible + .bg-mode-toggle-track {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 @media (max-width: 480px) {
   .app-header {
     padding: var(--space-2) var(--space-3);

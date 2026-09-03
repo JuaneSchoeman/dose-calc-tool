@@ -11,9 +11,12 @@ html, body, #root {
 body {
   margin: 0;
   font-family: var(--font-family);
-  background: var(--color-bg);
+  background-color: var(--app-bg-color);
+  background-image: var(--app-bg-image);
+  background-repeat: repeat;
   color: var(--color-text);
   line-height: 1.5;
+  transition: background-color 0.25s ease;
 }
 
 a {

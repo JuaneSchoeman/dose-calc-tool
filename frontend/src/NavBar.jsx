@@ -1,9 +1,11 @@
 // src/NavBar.jsx
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { useAppearance } from './context/AppearanceContext';
 
 export default function NavBar() {
   const { user, logout } = useAuth();
+  const { bgMode, toggleBgMode } = useAppearance();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -15,6 +17,20 @@ export default function NavBar() {
     <header className="app-header">
       <span className="brand">Dose Calculator</span>
       <nav className="app-nav">
+        <label className="bg-mode-toggle" title="Switch between the plain clinical background and a category-matched pattern">
+          <span className="bg-mode-toggle-label">Clinical</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-checked={bgMode === 'dynamic'}
+            checked={bgMode === 'dynamic'}
+            onChange={toggleBgMode}
+          />
+          <span className="bg-mode-toggle-track" aria-hidden="true">
+            <span className="bg-mode-toggle-thumb" />
+          </span>
+          <span className="bg-mode-toggle-label">Themed</span>
+        </label>
         {user ? (
           <>
             <NavLink to="/calculator" className={({ isActive }) => (isActive ? 'active' : '')}>

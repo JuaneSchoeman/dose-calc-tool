@@ -14,6 +14,12 @@
      feel stays calm and readable rather than loud. */
   --color-bg: #eef7f9;
   --color-surface: #ffffff;
+
+  /* Background mode (set at runtime by AppearanceContext based on the
+     clinical/dynamic toggle). Defaults here match the original clinical
+     look so nothing changes before AppearanceContext's effect runs. */
+  --app-bg-color: #eef7f9;
+  --app-bg-image: none;
   --color-border: #d7e6ea;
   --color-text: #17303d;
   --color-muted: #5c7480;

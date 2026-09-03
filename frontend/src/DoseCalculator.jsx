@@ -13,6 +13,7 @@ import { apiFetch } from './api';
 import Formula from './Formula';
 import { sanitizeDecimalInput } from './utils/numberInput';
 import { feetInchesToCm } from './utils/height';
+import { useAppearance } from './context/AppearanceContext';
 
 const STEPS = [
   { id: 1, label: '1. Category & type' },
@@ -35,6 +36,15 @@ export default function DoseCalculator() {
   // blank; it's still a real entry in the CATEGORIES list on the backend.
   const [category, setCategory] = useState('General');
   const [calcType, setCalcType] = useState('weight');
+
+  // Keeps the page background (when in 'dynamic' mode - see NavBar's
+  // toggle) matched to whichever category is currently selected here,
+  // updating live as the user changes the dropdown rather than only
+  // after a calculation is submitted.
+  const { setCategory: setBackgroundCategory } = useAppearance();
+  useEffect(() => {
+    setBackgroundCategory(category);
+  }, [category, setBackgroundCategory]);
 
   const [weightValue, setWeightValue] = useState('');
   const [weightUnit, setWeightUnit] = useState('kg');
