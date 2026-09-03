@@ -31,7 +31,9 @@ function useDebouncedValidator(delay = 300) {
 export default function DoseCalculator() {
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState([]);
-  const [category, setCategory] = useState('');
+  // FR3: 'General' is the default selection so the field is never left
+  // blank; it's still a real entry in the CATEGORIES list on the backend.
+  const [category, setCategory] = useState('General');
   const [calcType, setCalcType] = useState('weight');
 
   const [weightValue, setWeightValue] = useState('');

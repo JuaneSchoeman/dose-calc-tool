@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api';
+import { formatDateTime } from '../utils/formatDate';
 
 function defaultDateRange() {
   const to = new Date();
@@ -101,7 +102,7 @@ export default function ReportsPage() {
       <div className="print-header">
         <h1>Dose Calculator - Usage Report</h1>
         <p className="print-meta">
-          Period: {from} to {to} &nbsp;|&nbsp; Generated: {new Date().toLocaleString()}
+          Period: {from} to {to} &nbsp;|&nbsp; Generated: {formatDateTime(new Date())}
         </p>
       </div>
 
@@ -314,7 +315,7 @@ export default function ReportsPage() {
                 )}
                 {detailedRows.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.created_at}</td>
+                    <td>{formatDateTime(r.created_at)}</td>
                     <td>{r.identifier_number}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>

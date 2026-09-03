@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../api';
+import { formatDateTime } from '../utils/formatDate';
 
 const COLUMNS = [
   { key: 'created_at', label: 'Date/time' },
@@ -81,7 +82,7 @@ export default function HistoryPage() {
               <tbody>
                 {sortedRows.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.created_at}</td>
+                    <td>{formatDateTime(r.created_at)}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>
                     <td>{r.drug_name || '-'}</td>

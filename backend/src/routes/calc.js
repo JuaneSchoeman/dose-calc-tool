@@ -14,14 +14,19 @@ const { requireLogin } = require('./middleware');
 
 const router = express.Router();
 
-// FR3: clinical categories offered to the user (matches Table 3-1 areas)
+// FR3: clinical categories offered to the user (matches Table 3-1 areas).
+// 'General' is first/default (no specific clinical area applies) and
+// 'Pharmacy' was added alongside it; the original six are left in place and
+// unchanged so existing calculation history rows keep matching by name.
 const CATEGORIES = [
+  'General',
   'Adult Medical/Surgical',
   'Oncology',
   'Outpatient/Ambulatory',
   'Intensive Care',
   'Emergency Department',
   'Paediatrics',
+  'Pharmacy',
 ];
 
 router.get('/categories', requireLogin, (req, res) => {
