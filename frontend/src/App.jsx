@@ -55,7 +55,9 @@ function App() {
           <Route path="*" element={<Navigate to="/calculator" replace />} />
         </Routes>
       </div>
-      <footer className="app-footer">ITRI671 - Dose Calculation Artefact. Not for clinical use.</footer>
+      <footer className="app-footer">
+        <span className="app-footer-text">ITRI671 - Dose Calculation Artefact. Not for clinical use.</span>
+      </footer>
     </div>
   );
 }

@@ -535,6 +535,13 @@ tbody tr:hover {
   font-size: 0.8rem;
   padding: var(--space-5);
 }
+.app-footer-text {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.35em 0.9em;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(23, 48, 61, 0.15);
+}
 
 /* --- Printing (reports, history) ------------------------------------------ */
 .print-header {
