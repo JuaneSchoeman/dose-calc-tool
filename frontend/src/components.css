@@ -245,6 +245,10 @@ select:focus {
   width: auto;
   min-width: 90px;
 }
+.height-unit-select {
+  width: auto;
+  min-width: 110px;
+}
 .dose-unit-suffix {
   color: var(--color-muted);
   font-weight: 600;

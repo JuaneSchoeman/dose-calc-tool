@@ -179,13 +179,23 @@ describe('standalone mass unit conversion (mcg/mg/g/kg/lb)', () => {
   });
 
   test('converts decagrams to grams', () => {
-    // 5 dg = 50 g
-    expect(calc.convertMass(5, 'dg', 'g')).toBeCloseTo(50, 4);
+    // 5 dkg = 50 g
+    expect(calc.convertMass(5, 'dkg', 'g')).toBeCloseTo(50, 4);
   });
 
   test('converts decagrams to milligrams', () => {
-    // 1 dg = 10000 mg
-    expect(calc.convertMass(1, 'dg', 'mg')).toBeCloseTo(10000, 2);
+    // 1 dkg = 10000 mg
+    expect(calc.convertMass(1, 'dkg', 'mg')).toBeCloseTo(10000, 2);
+  });
+
+  test('converts decigrams to grams', () => {
+    // 5 dg = 0.5 g
+    expect(calc.convertMass(5, 'dg', 'g')).toBeCloseTo(0.5, 4);
+  });
+
+  test('converts decigrams to milligrams', () => {
+    // 1 dg = 100 mg
+    expect(calc.convertMass(1, 'dg', 'mg')).toBeCloseTo(100, 2);
   });
 
   test('converts centigrams to grams', () => {
@@ -196,6 +206,33 @@ describe('standalone mass unit conversion (mcg/mg/g/kg/lb)', () => {
   test('converts grams to centigrams', () => {
     // 1 g = 100 cg
     expect(calc.convertMass(1, 'g', 'cg')).toBeCloseTo(100, 2);
+  });
+
+  test('converts hectograms to grams', () => {
+    // 1 hg = 100 g
+    expect(calc.convertMass(1, 'hg', 'g')).toBeCloseTo(100, 4);
+  });
+
+  test('1 oz -> ~28.3495 g', () => {
+    expect(calc.convertMass(1, 'oz', 'g')).toBeCloseTo(28.3495, 3);
+  });
+
+  test('16 oz -> 1 lb', () => {
+    expect(calc.convertMass(16, 'oz', 'lb')).toBeCloseTo(1, 3);
+  });
+
+  test('1 gr (grain) -> ~0.0648 g', () => {
+    expect(calc.convertMass(1, 'gr', 'g')).toBeCloseTo(0.0648, 4);
+  });
+
+  test('1 st (stone) -> 14 lb', () => {
+    expect(calc.convertMass(1, 'st', 'lb')).toBeCloseTo(14, 3);
+  });
+
+  test('round-trip oz -> g -> oz returns the original value', () => {
+    const g = calc.convertMass(5, 'oz', 'g');
+    const backToOz = calc.convertMass(g, 'g', 'oz');
+    expect(backToOz).toBeCloseTo(5, 3);
   });
 });
 

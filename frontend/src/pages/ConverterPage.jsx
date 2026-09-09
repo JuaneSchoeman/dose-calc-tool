@@ -1,7 +1,7 @@
 // src/pages/ConverterPage.jsx
 // "Tools" page: three standalone utilities, none of them tied to a patient
 // dose calculation and none of them written to the calculation history.
-//   - Mass converter (mcg/mg/cg/g/dg/kg/lb)
+//   - Mass converter (mcg/mg/cg/dg/gr/g/dkg/hg/oz/kg/lb/st)
 //   - Height converter (mm/cm/inch/ft/m)
 //   - BSA calculator (Mosteller formula) - deliberately separate from the
 //     BSA-based dose calculator on the Calculator page, for looking up a

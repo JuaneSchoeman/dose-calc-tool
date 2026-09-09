@@ -231,31 +231,48 @@ function round(value, decimals) {
 // patient calculation.
 //
 // All factors are expressed in grams (the base unit for this table).
+//
+// Note: the previous version of this table had a 'dg' key set to 10 and
+// labeled "decagram" - that was a naming bug. The correct SI symbol for
+// decigram (0.1 g) is 'dg'; decagram (10 g) is 'dag' or, informally in some
+// regions, 'dkg' - which is the symbol used here to match what's commonly
+// seen on kitchen scales and in some European countries. The old factor-10
+// entry has been renamed to 'dkg' and a correct 'dg' (decigram) entry added.
 const MASS_UNITS_TO_GRAMS = {
   mcg: 0.000001, // microgram
   mg: 0.001, // milligram
   cg: 0.01, // centigram
+  dg: 0.1, // decigram
+  gr: 0.06479891, // grain (apothecary/avoirdupois, exact by international agreement)
   g: 1, // gram
-  dg: 10, // decagram
+  dkg: 10, // decagram (SI symbol 'dag'; 'dkg' used here as the more commonly seen variant)
+  hg: 100, // hectogram
+  oz: 28.349523125, // ounce (avoirdupois, exact)
   kg: 1000, // kilogram
-  lb: 453.59237, // pound (avoirdupois)
+  lb: 453.59237, // pound (avoirdupois, exact)
+  st: 6350.29318, // stone (14 lb)
 };
 
 const MASS_UNIT_LABELS = {
   mcg: 'mcg (microgram)',
   mg: 'mg (milligram)',
   cg: 'cg (centigram)',
+  dg: 'dg (decigram)',
+  gr: 'gr (grain)',
   g: 'g (gram)',
-  dg: 'dg (decagram)',
+  dkg: 'dkg (decagram)',
+  hg: 'hg (hectogram)',
+  oz: 'oz (ounce)',
   kg: 'kg (kilogram)',
   lb: 'lb (pound)',
+  st: 'st (stone)',
 };
 
 /**
  * Convert a mass value between any two supported units.
  * @param {number} value
- * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'kg'|'lb'} fromUnit
- * @param {'mcg'|'mg'|'cg'|'g'|'dg'|'kg'|'lb'} toUnit
+ * @param {'mcg'|'mg'|'cg'|'dg'|'gr'|'g'|'dkg'|'hg'|'oz'|'kg'|'lb'|'st'} fromUnit
+ * @param {'mcg'|'mg'|'cg'|'dg'|'gr'|'g'|'dkg'|'hg'|'oz'|'kg'|'lb'|'st'} toUnit
  * @returns {number}
  */
 function convertMass(value, fromUnit, toUnit) {
@@ -266,9 +283,9 @@ function convertMass(value, fromUnit, toUnit) {
   }
   const grams = Number(value) * fromFactor;
   const converted = grams / toFactor;
-  // More decimal places for very small target units (mcg, cg) so small
-  // quantities don't round away to zero; fewer for larger units.
-  const decimals = toUnit === 'mcg' ? 2 : toUnit === 'mg' || toUnit === 'cg' ? 4 : 6;
+  // More decimal places for smaller target units (where results can be
+  // very large numbers or need finer precision), fewer for larger units.
+  const decimals = toUnit === 'mcg' ? 2 : ['mg', 'cg', 'dg', 'gr'].includes(toUnit) ? 4 : 6;
   return round(converted, decimals);
 }
 

@@ -335,36 +335,22 @@ export default function DoseCalculator() {
                 value={weightValue}
                 onChange={(e) => handleWeightChange(sanitizeDecimalInput(e.target.value))}
               />
-              <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Weight unit">
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="weight-kg"
-                    name="weightUnit"
-                    value="kg"
-                    checked={weightUnit === 'kg'}
-                    onChange={() => {
-                      setWeightUnit('kg');
-                      if (weightValue) debounce(() => validateField('weightKg', weightValue, setWeightError));
-                    }}
-                  />
-                  <label htmlFor="weight-kg">kg</label>
-                </div>
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="weight-lb"
-                    name="weightUnit"
-                    value="lb"
-                    checked={weightUnit === 'lb'}
-                    onChange={() => {
-                      setWeightUnit('lb');
-                      if (weightValue) debounce(() => validateField('weightLb', weightValue, setWeightError));
-                    }}
-                  />
-                  <label htmlFor="weight-lb">lb</label>
-                </div>
-              </div>
+              <select
+                id="weightUnit"
+                className="unit-choice"
+                aria-label="Weight unit"
+                value={weightUnit}
+                onChange={(e) => {
+                  const unit = e.target.value;
+                  setWeightUnit(unit);
+                  if (weightValue) {
+                    debounce(() => validateField(unit === 'lb' ? 'weightLb' : 'weightKg', weightValue, setWeightError));
+                  }
+                }}
+              >
+                <option value="kg">kg</option>
+                <option value="lb">lb</option>
+              </select>
             </div>
             <p className="help-text">Valid range: 0.5-300 kg.</p>
             <p className="field-error">{weightError}</p>
@@ -376,41 +362,18 @@ export default function DoseCalculator() {
               <label htmlFor="heightValue">
                 Patient height <span className="required-tag">*</span>
               </label>
-              <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit" style={{ marginBottom: 8 }}>
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="height-cm"
-                    name="heightUnit"
-                    value="cm"
-                    checked={heightUnit === 'cm'}
-                    onChange={() => setHeightUnit('cm')}
-                  />
-                  <label htmlFor="height-cm">cm</label>
-                </div>
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="height-inch"
-                    name="heightUnit"
-                    value="inch"
-                    checked={heightUnit === 'inch'}
-                    onChange={() => setHeightUnit('inch')}
-                  />
-                  <label htmlFor="height-inch">inch</label>
-                </div>
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="height-ftin"
-                    name="heightUnit"
-                    value="ftin"
-                    checked={heightUnit === 'ftin'}
-                    onChange={() => setHeightUnit('ftin')}
-                  />
-                  <label htmlFor="height-ftin">ft + in</label>
-                </div>
-              </div>
+              <select
+                id="heightUnit"
+                className="unit-choice height-unit-select"
+                aria-label="Height unit"
+                style={{ marginBottom: 8 }}
+                value={heightUnit}
+                onChange={(e) => setHeightUnit(e.target.value)}
+              >
+                <option value="cm">cm</option>
+                <option value="inch">inch</option>
+                <option value="ftin">ft + in</option>
+              </select>
 
               {heightUnit === 'ftin' ? (
                 <div className="ft-in-row">
