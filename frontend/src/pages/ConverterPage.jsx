@@ -485,36 +485,22 @@ function BsaCalculator() {
                 value={weightValue}
                 onChange={(e) => handleWeightChange(sanitizeDecimalInput(e.target.value))}
               />
-              <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Weight unit">
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="bsa-weight-kg"
-                    name="bsaWeightUnit"
-                    value="kg"
-                    checked={weightUnit === 'kg'}
-                    onChange={() => {
-                      setWeightUnit('kg');
-                      if (weightValue) validateField('weightKg', weightValue, setWeightError);
-                    }}
-                  />
-                  <label htmlFor="bsa-weight-kg">kg</label>
-                </div>
-                <div className="choice-option">
-                  <input
-                    type="radio"
-                    id="bsa-weight-lb"
-                    name="bsaWeightUnit"
-                    value="lb"
-                    checked={weightUnit === 'lb'}
-                    onChange={() => {
-                      setWeightUnit('lb');
-                      if (weightValue) validateField('weightLb', weightValue, setWeightError);
-                    }}
-                  />
-                  <label htmlFor="bsa-weight-lb">lb</label>
-                </div>
-              </div>
+              <select
+                id="bsaWeightUnit"
+                className="unit-choice"
+                aria-label="Weight unit"
+                value={weightUnit}
+                onChange={(e) => {
+                  const unit = e.target.value;
+                  setWeightUnit(unit);
+                  if (weightValue) {
+                    validateField(unit === 'lb' ? 'weightLb' : 'weightKg', weightValue, setWeightError);
+                  }
+                }}
+              >
+                <option value="kg">kg</option>
+                <option value="lb">lb</option>
+              </select>
             </div>
             <p className="help-text">Valid range: 0.5-300 kg.</p>
             <p className="field-error">{weightError}</p>
@@ -524,41 +510,18 @@ function BsaCalculator() {
             <label htmlFor="bsaHeightValue">
               Patient height <span className="required-tag">*</span>
             </label>
-            <div className="unit-choice choice-group horizontal-compact" role="radiogroup" aria-label="Height unit" style={{ marginBottom: 8 }}>
-              <div className="choice-option">
-                <input
-                  type="radio"
-                  id="bsa-height-cm"
-                  name="bsaHeightUnit"
-                  value="cm"
-                  checked={heightUnit === 'cm'}
-                  onChange={() => setHeightUnit('cm')}
-                />
-                <label htmlFor="bsa-height-cm">cm</label>
-              </div>
-              <div className="choice-option">
-                <input
-                  type="radio"
-                  id="bsa-height-inch"
-                  name="bsaHeightUnit"
-                  value="inch"
-                  checked={heightUnit === 'inch'}
-                  onChange={() => setHeightUnit('inch')}
-                />
-                <label htmlFor="bsa-height-inch">inch</label>
-              </div>
-              <div className="choice-option">
-                <input
-                  type="radio"
-                  id="bsa-height-ftin"
-                  name="bsaHeightUnit"
-                  value="ftin"
-                  checked={heightUnit === 'ftin'}
-                  onChange={() => setHeightUnit('ftin')}
-                />
-                <label htmlFor="bsa-height-ftin">ft + in</label>
-              </div>
-            </div>
+            <select
+              id="bsaHeightUnit"
+              className="unit-choice height-unit-select"
+              aria-label="Height unit"
+              style={{ marginBottom: 8 }}
+              value={heightUnit}
+              onChange={(e) => setHeightUnit(e.target.value)}
+            >
+              <option value="cm">cm</option>
+              <option value="inch">inch</option>
+              <option value="ftin">ft + in</option>
+            </select>
 
             {heightUnit === 'ftin' ? (
               <div className="ft-in-row">

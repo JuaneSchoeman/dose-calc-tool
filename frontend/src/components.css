@@ -241,6 +241,12 @@ select:focus {
   min-width: 0;
 }
 .input-with-unit .unit-choice {
+  /* The base `select { width: 100% }` rule above would otherwise win here
+     (it's a different property than flex, so cascade rules apply it
+     regardless of this selector's higher specificity) and blow this
+     dropdown up to the full row width, squeezing the text input down to
+     almost nothing. Pin it back to its own content width explicitly. */
+  width: auto;
   flex: 0 0 auto;
   min-width: 0;
 }
