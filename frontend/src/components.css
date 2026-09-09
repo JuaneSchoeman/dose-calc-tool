@@ -254,13 +254,20 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 1 auto;
-  min-width: 0;
+  /* Do NOT shrink this below its natural content size (unlike the plain
+     text input, which has min-width:0 and absorbs all the squeezing).
+     This group contains a select AND a nowrap "/kg"-style suffix; letting
+     the flex algorithm shrink the group itself, on top of also letting
+     its select shrink down to a 64px floor, understates how much room
+     the group actually needs and the suffix ends up clipped past the
+     panel edge. Keeping it at flex: 0 0 auto forces the input (the only
+     item that's allowed to shrink) to give up space instead. */
+  flex: 0 0 auto;
 }
 .dose-unit-picker .unit-choice {
   width: auto;
   min-width: 64px;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
 }
 .height-unit-select {
   width: auto;
