@@ -510,53 +510,53 @@ function BsaCalculator() {
             <label htmlFor="bsaHeightValue">
               Patient height <span className="required-tag">*</span>
             </label>
-            <select
-              id="bsaHeightUnit"
-              className="unit-choice height-unit-select"
-              aria-label="Height unit"
-              style={{ marginBottom: 8 }}
-              value={heightUnit}
-              onChange={(e) => setHeightUnit(e.target.value)}
-            >
-              <option value="cm">cm</option>
-              <option value="inch">inch</option>
-              <option value="ftin">ft + in</option>
-            </select>
-
-            {heightUnit === 'ftin' ? (
-              <div className="ft-in-row">
+            <div className="input-with-unit">
+              {heightUnit === 'ftin' ? (
+                <div className="ft-in-row">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    id="bsaHeightFeet"
+                    aria-label="Feet"
+                    placeholder="ft"
+                    required
+                    value={heightFeet}
+                    onChange={(e) => handleHeightFeetChange(sanitizeDecimalInput(e.target.value))}
+                  />
+                  <span className="dose-unit-suffix">ft</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    id="bsaHeightInches"
+                    aria-label="Inches"
+                    placeholder="in"
+                    value={heightInches}
+                    onChange={(e) => handleHeightInchesChange(sanitizeDecimalInput(e.target.value))}
+                  />
+                  <span className="dose-unit-suffix">in</span>
+                </div>
+              ) : (
                 <input
                   type="text"
                   inputMode="decimal"
-                  id="bsaHeightFeet"
-                  aria-label="Feet"
-                  placeholder="ft"
+                  id="bsaHeightValue"
                   required
-                  value={heightFeet}
-                  onChange={(e) => handleHeightFeetChange(sanitizeDecimalInput(e.target.value))}
+                  value={heightValue}
+                  onChange={(e) => handleHeightChange(sanitizeDecimalInput(e.target.value))}
                 />
-                <span className="dose-unit-suffix">ft</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  id="bsaHeightInches"
-                  aria-label="Inches"
-                  placeholder="in"
-                  value={heightInches}
-                  onChange={(e) => handleHeightInchesChange(sanitizeDecimalInput(e.target.value))}
-                />
-                <span className="dose-unit-suffix">in</span>
-              </div>
-            ) : (
-              <input
-                type="text"
-                inputMode="decimal"
-                id="bsaHeightValue"
-                required
-                value={heightValue}
-                onChange={(e) => handleHeightChange(sanitizeDecimalInput(e.target.value))}
-              />
-            )}
+              )}
+              <select
+                id="bsaHeightUnit"
+                className="unit-choice height-unit-select"
+                aria-label="Height unit"
+                value={heightUnit}
+                onChange={(e) => setHeightUnit(e.target.value)}
+              >
+                <option value="cm">cm</option>
+                <option value="inch">inch</option>
+                <option value="ftin">ft + in</option>
+              </select>
+            </div>
             <p className="help-text">Valid range: 30-250 cm (about 1 ft to 8 ft 2 in).</p>
             <p className="field-error">{heightError}</p>
           </div>

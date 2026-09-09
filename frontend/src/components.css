@@ -278,6 +278,8 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .ft-in-row input {
   width: auto;
