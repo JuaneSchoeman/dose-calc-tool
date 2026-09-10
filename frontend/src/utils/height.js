@@ -38,3 +38,17 @@ export function cmToFeetInches(cm) {
   }
   return { feet, inches };
 }
+
+/**
+ * Format a cm value as a whole "X ft Y in" string, rounding to the nearest
+ * whole inch first. Used for user-facing range text (e.g. help copy), where
+ * a friendly rounded figure reads better than exact decimals.
+ * @param {number} cm
+ * @returns {string}
+ */
+export function formatCmAsFeetInches(cm) {
+  const totalInches = Math.round(Number(cm) / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${feet} ft ${inches} in`;
+}

@@ -12,8 +12,35 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from './api';
 import Formula from './Formula';
 import { sanitizeDecimalInput } from './utils/numberInput';
-import { feetInchesToCm } from './utils/height';
+import { feetInchesToCm, formatCmAsFeetInches } from './utils/height';
 import { useAppearance } from './context/AppearanceContext';
+
+// Mirrors backend/src/validation.js's RANGES (kept in sync manually since
+// the frontend needs these purely for display copy, not enforcement - the
+// backend remains the source of truth for actual validation).
+const WEIGHT_RANGES = {
+  kg: { min: 0.5, max: 300 },
+  lb: { min: 1.1, max: 660 },
+};
+const HEIGHT_RANGE_CM = { min: 30, max: 250 };
+
+function weightRangeText(unit) {
+  const { min, max } = WEIGHT_RANGES[unit] || WEIGHT_RANGES.kg;
+  return `Valid range: ${min}-${max} ${unit}.`;
+}
+
+function heightRangeText(unit) {
+  const { min, max } = HEIGHT_RANGE_CM;
+  if (unit === 'inch') {
+    const minIn = Math.round((min / 2.54) * 10) / 10;
+    const maxIn = Math.round((max / 2.54) * 10) / 10;
+    return `Valid range: ${minIn}-${maxIn} in.`;
+  }
+  if (unit === 'ftin') {
+    return `Valid range: ${formatCmAsFeetInches(min)} to ${formatCmAsFeetInches(max)}.`;
+  }
+  return `Valid range: ${min}-${max} cm.`;
+}
 
 const STEPS = [
   { id: 1, label: '1. Category & type' },
@@ -352,7 +379,7 @@ export default function DoseCalculator() {
                 <option value="lb">lb</option>
               </select>
             </div>
-            <p className="help-text">Valid range: 0.5-300 kg.</p>
+            <p className="help-text">{weightRangeText(weightUnit)}</p>
             <p className="field-error">{weightError}</p>
           </div>
           )}
@@ -410,7 +437,7 @@ export default function DoseCalculator() {
                 </select>
               </div>
 
-              <p className="help-text">Valid range: 30-250 cm (about 1 ft to 8 ft 2 in).</p>
+              <p className="help-text">{heightRangeText(heightUnit)}</p>
               <p className="field-error">{heightError}</p>
             </div>
           )}
