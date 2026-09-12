@@ -13,7 +13,7 @@ const COLUMNS = [
   { key: 'drug_name', label: 'Drug' },
   { key: 'weight_kg', label: 'Weight (kg)' },
   { key: 'height_cm', label: 'Height (cm)' },
-  { key: 'bsa_m2', label: 'BSA (m2)' },
+  { key: 'bsa_m2', label: 'BSA (m²)' },
   { key: 'dose_per_unit', label: 'Prescribed rate' },
   { key: 'total_dose', label: 'Total dose' },
 ];
