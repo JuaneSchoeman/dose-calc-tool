@@ -23,7 +23,32 @@ const VALID_RANGES = {
 
 const LB_PER_KG = 2.2046226218; // conversion factor, kg <-> lb
 const INCH_PER_CM = 0.3937007874; // conversion factor, cm <-> inch
-const STANDARD_BSA_M2 = 1.73; // reference adult BSA used to normalise BSA-based dosing
+const STANDARD_BSA_M2 = 1.73; // reference adult BSA used by the 'ratio' dosing method only
+
+// --- BSA-based dosing methods --------------------------------------------
+// Two distinct, clinically-recognised calculations both get called
+// "BSA-based dosing", and they are NOT interchangeable:
+//
+//   'direct' (default) - the standard method used in oncology and most
+//     paediatric protocols. dosePerM2 IS the established mg/m² rate from
+//     the drug protocol itself; you simply multiply it by the patient's
+//     actual BSA. There is no "standard adult" reference size involved.
+//       totalDose = dosePerM2 x patient BSA
+//
+//   'ratio' - a different technique, sometimes used to estimate a
+//     paediatric (or otherwise non-standard-size) dose from a known
+//     *adult* total dose when no paediatric-specific dosing data exists.
+//     Here dosePerM2 represents that reference adult dose (in mg, not a
+//     mg/m² rate), which is scaled by how the patient's BSA compares to
+//     the historical reference adult BSA of 1.73 m².
+//       totalDose = (patient BSA / 1.73) x reference adult dose
+//
+// Because these two produce very different numbers from the same inputs,
+// the caller must be explicit about which is intended - 'direct' is only
+// the default because it is the more commonly used of the two in general
+// clinical practice (see calc.js route comments for how the choice is
+// surfaced to the user).
+const BSA_DOSE_METHODS = ['direct', 'ratio'];
 
 /**
  * FR8: Validate a single numeric field against a named range.
@@ -103,23 +128,36 @@ function calculateBSA(weightKg, heightCm) {
 
 // --- FR6: BSA-based dose -------------------------------------------
 /**
- * Dose is normalised to the standard reference adult body surface area of
- * 1.73 m² - i.e. total dose = (patient BSA ÷ 1.73 m²) × dose per m². This is
- * the standard body-surface-area-normalisation convention used when scaling
- * a reference dose to an individual patient.
- *
  * @param {number} weightKg
  * @param {number} heightCm
- * @param {number} dosePerM2 - generic dose per m^2 (e.g. mg/m^2)
- * @returns {{ bsa: number, totalDose: number, steps: string[] }}
+ * @param {number} dosePerM2 - meaning depends on `method`: for 'direct' this
+ *   is a genuine mg/m^2 protocol rate; for 'ratio' this is a known reference
+ *   (typically adult) total dose in mg. See BSA_DOSE_METHODS comment above.
+ * @param {'direct'|'ratio'} [method='direct']
+ * @returns {{ bsa: number, totalDose: number, method: string, steps: object[] }}
  */
-function calculateBsaDose(weightKg, heightCm, dosePerM2) {
+function calculateBsaDose(weightKg, heightCm, dosePerM2, method = 'direct') {
+  if (!BSA_DOSE_METHODS.includes(method)) {
+    throw new Error(`Unsupported BSA dose method: ${method}`);
+  }
   const bsa = calculateBSA(weightKg, heightCm);
-  const totalDose = round((bsa / STANDARD_BSA_M2) * dosePerM2, 4);
+  const totalDose = applyBsaDoseMethod(bsa, dosePerM2, method);
 
-  const steps = [...buildBsaCoreSteps(weightKg, heightCm, bsa), buildDoseFormulaStep(3, bsa, dosePerM2, totalDose)];
+  const steps = [
+    ...buildBsaCoreSteps(weightKg, heightCm, bsa),
+    buildDoseFormulaStep(3, bsa, dosePerM2, totalDose, method),
+  ];
 
-  return { bsa, totalDose, steps };
+  return { bsa, totalDose, method, steps };
+}
+
+// Shared arithmetic for both entry points (measurements-derived and
+// directly-entered BSA) so the two calculation methods can never drift
+// apart between calculateBsaDose and calculateDoseFromDirectBsa.
+function applyBsaDoseMethod(bsa, dosePerM2, method) {
+  return method === 'ratio'
+    ? round((bsa / STANDARD_BSA_M2) * dosePerM2, 4)
+    : round(bsa * dosePerM2, 4);
 }
 
 // Shared by calculateBsaDose and calculateBsaOnly, so the two step
@@ -142,12 +180,21 @@ function buildBsaCoreSteps(weightKg, heightCm, bsa) {
 // Shared by calculateBsaDose (BSA derived from weight/height) and
 // calculateDoseFromDirectBsa (BSA entered directly) - the arithmetic once
 // BSA is known is identical either way, only the step number differs
-// depending on how many steps came before it.
-function buildDoseFormulaStep(stepNumber, bsa, dosePerM2, totalDose) {
+// depending on how many steps came before it. The formula text itself
+// branches on `method` since 'direct' and 'ratio' are genuinely different
+// calculations (see the BSA_DOSE_METHODS comment above).
+function buildDoseFormulaStep(stepNumber, bsa, dosePerM2, totalDose, method = 'direct') {
+  if (method === 'ratio') {
+    return {
+      title: `Step ${stepNumber} — Apply the BSA-ratio dose formula`,
+      formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × reference dose = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
+      latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{reference dose} = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
+    };
+  }
   return {
-    title: `Step ${stepNumber} — Apply the dose formula`,
-    formula: `Total dose = (BSA ÷ ${STANDARD_BSA_M2} m²) × dose per m² = (${bsa} ÷ ${STANDARD_BSA_M2}) × ${dosePerM2} = ${totalDose}`,
-    latex: `\\text{Total dose} = \\left(\\dfrac{\\text{BSA}}{${STANDARD_BSA_M2}\\ \\text{m}^2}\\right) \\times \\text{dose per m}^2 = \\left(\\dfrac{${bsa}}{${STANDARD_BSA_M2}}\\right) \\times ${dosePerM2} = ${totalDose}`,
+    title: `Step ${stepNumber} — Apply the direct BSA dose formula`,
+    formula: `Total dose = dose per m² × BSA = ${dosePerM2} × ${bsa} = ${totalDose}`,
+    latex: `\\text{Total dose} = \\text{dose per m}^2 \\times \\text{BSA} = ${dosePerM2} \\times ${bsa} = ${totalDose}`,
   };
 }
 
@@ -176,20 +223,25 @@ function calculateBsaOnly(weightKg, heightCm) {
 // there's nothing to derive - BSA is already given.
 /**
  * @param {number} bsa - body surface area in m^2, entered directly
- * @param {number} dosePerM2 - generic dose per m^2 (e.g. mg/m^2)
- * @returns {{ totalDose: number, steps: object[] }}
+ * @param {number} dosePerM2 - meaning depends on `method`; see
+ *   calculateBsaDose above.
+ * @param {'direct'|'ratio'} [method='direct']
+ * @returns {{ totalDose: number, method: string, steps: object[] }}
  */
-function calculateDoseFromDirectBsa(bsa, dosePerM2) {
-  const totalDose = round((bsa / STANDARD_BSA_M2) * dosePerM2, 4);
+function calculateDoseFromDirectBsa(bsa, dosePerM2, method = 'direct') {
+  if (!BSA_DOSE_METHODS.includes(method)) {
+    throw new Error(`Unsupported BSA dose method: ${method}`);
+  }
+  const totalDose = applyBsaDoseMethod(bsa, dosePerM2, method);
   const steps = [
     {
       title: 'Step 1 — Confirm input',
       formula: `BSA = ${bsa} m²`,
       latex: `\\text{BSA} = ${bsa}\\ \\text{m}^2`,
     },
-    buildDoseFormulaStep(2, bsa, dosePerM2, totalDose),
+    buildDoseFormulaStep(2, bsa, dosePerM2, totalDose, method),
   ];
-  return { totalDose, steps };
+  return { totalDose, method, steps };
 }
 
 // --- FR7: weight-based dose ------------------------------------------
@@ -353,6 +405,7 @@ module.exports = {
   normaliseWeightToKg,
   normaliseHeightToCm,
   calculateBSA,
+  BSA_DOSE_METHODS,
   calculateBsaDose,
   calculateBsaOnly,
   calculateDoseFromDirectBsa,

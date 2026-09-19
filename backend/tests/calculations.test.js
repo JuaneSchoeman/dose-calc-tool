@@ -51,27 +51,27 @@ describe('BSA calculation - Mosteller formula (FR5, NFR4)', () => {
   });
 });
 
-describe('BSA-based dose (FR6, normalised to 1.73 m²)', () => {
-  test('70 kg, 170 cm, 100 mg/m^2 -> BSA 1.8181, dose normalised to 1.73 m^2 -> 105.0925', () => {
-    const { bsa, totalDose } = calc.calculateBsaDose(70, 170, 100);
+describe("BSA-based dose - 'direct' method (FR6): total dose = dose per m² × BSA", () => {
+  test('70 kg, 170 cm, 175 mg/m^2 -> BSA 1.8181, dose = 175 x 1.8181 = 318.1675', () => {
+    const { bsa, totalDose, method } = calc.calculateBsaDose(70, 170, 175);
     expect(bsa).toBeCloseTo(1.8181, 2);
-    expect(totalDose).toBeCloseTo(105.0925, 3);
+    expect(totalDose).toBeCloseTo(318.1675, 3);
+    expect(method).toBe('direct');
   });
 
-  test('a patient exactly at the reference 1.73 m^2 BSA gets the unscaled dose', () => {
-    // height=170cm, weight~63.38kg gives BSA = sqrt((170*63.38)/3600) = 1.73 m^2
-    const { bsa, totalDose } = calc.calculateBsaDose(63.38, 170, 100);
-    expect(bsa).toBeCloseTo(1.73, 2);
-    expect(totalDose).toBeCloseTo(100, 0);
+  test("'direct' is the default when no method is passed", () => {
+    const explicit = calc.calculateBsaDose(70, 170, 175, 'direct');
+    const implicit = calc.calculateBsaDose(70, 170, 175);
+    expect(implicit.totalDose).toBe(explicit.totalDose);
   });
 
   test('returns a three-step breakdown (FR9)', () => {
-    const { steps } = calc.calculateBsaDose(70, 170, 100);
+    const { steps } = calc.calculateBsaDose(70, 170, 175);
     expect(steps).toHaveLength(3);
   });
 
   test('every step includes a title, plain-text formula, and LaTeX expression', () => {
-    const { steps } = calc.calculateBsaDose(70, 170, 100);
+    const { steps } = calc.calculateBsaDose(70, 170, 175);
     steps.forEach((step) => {
       expect(typeof step.title).toBe('string');
       expect(step.title.length).toBeGreaterThan(0);
@@ -81,28 +81,55 @@ describe('BSA-based dose (FR6, normalised to 1.73 m²)', () => {
       expect(step.latex.length).toBeGreaterThan(0);
     });
   });
+
+  test('rejects an unsupported method', () => {
+    expect(() => calc.calculateBsaDose(70, 170, 175, 'bogus')).toThrow();
+  });
 });
 
-describe('BSA-based dose, entered directly (calculateDoseFromDirectBsa)', () => {
-  test('BSA 1.8181, 100 mg/m^2 -> matches the measurements-derived dose for the same BSA', () => {
-    const direct = calc.calculateDoseFromDirectBsa(1.8181, 100);
-    const fromMeasurements = calc.calculateBsaDose(70, 170, 100);
-    expect(direct.totalDose).toBe(fromMeasurements.totalDose);
+describe("BSA-based dose - 'ratio' method (FR6, adjusted against the 1.73 m² reference adult)", () => {
+  test('70 kg, 170 cm, 100 mg reference dose -> BSA 1.8181, dose ratio-adjusted -> 105.0925', () => {
+    const { bsa, totalDose, method } = calc.calculateBsaDose(70, 170, 100, 'ratio');
+    expect(bsa).toBeCloseTo(1.8181, 2);
+    expect(totalDose).toBeCloseTo(105.0925, 3);
+    expect(method).toBe('ratio');
   });
 
-  test('a directly entered reference 1.73 m^2 BSA gets the unscaled dose', () => {
-    const { totalDose } = calc.calculateDoseFromDirectBsa(1.73, 100);
+  test('a patient exactly at the reference 1.73 m^2 BSA gets the unscaled reference dose', () => {
+    // height=170cm, weight~63.38kg gives BSA = sqrt((170*63.38)/3600) = 1.73 m^2
+    const { bsa, totalDose } = calc.calculateBsaDose(63.38, 170, 100, 'ratio');
+    expect(bsa).toBeCloseTo(1.73, 2);
+    expect(totalDose).toBeCloseTo(100, 0);
+  });
+
+  test('gives a materially different result from the direct method for the same inputs', () => {
+    const direct = calc.calculateBsaDose(70, 170, 100, 'direct');
+    const ratio = calc.calculateBsaDose(70, 170, 100, 'ratio');
+    expect(direct.totalDose).not.toBeCloseTo(ratio.totalDose, 1);
+  });
+});
+
+describe("BSA-based dose, entered directly (calculateDoseFromDirectBsa)", () => {
+  test("'direct' method: BSA 1.8181, 175 mg/m^2 -> matches the measurements-derived dose for the same BSA", () => {
+    const direct = calc.calculateDoseFromDirectBsa(1.8181, 175);
+    const fromMeasurements = calc.calculateBsaDose(70, 170, 175);
+    expect(direct.totalDose).toBe(fromMeasurements.totalDose);
+    expect(direct.method).toBe('direct');
+  });
+
+  test("'ratio' method: a directly entered reference 1.73 m^2 BSA gets the unscaled reference dose", () => {
+    const { totalDose } = calc.calculateDoseFromDirectBsa(1.73, 100, 'ratio');
     expect(totalDose).toBeCloseTo(100, 0);
   });
 
   test('returns a two-step breakdown (no weight/height/Mosteller step, since BSA is already given)', () => {
-    const { steps } = calc.calculateDoseFromDirectBsa(1.82, 100);
+    const { steps } = calc.calculateDoseFromDirectBsa(1.82, 175);
     expect(steps).toHaveLength(2);
     expect(steps.some((s) => /mosteller/i.test(s.title))).toBe(false);
   });
 
   test('every step includes a title, plain-text formula, and LaTeX expression', () => {
-    const { steps } = calc.calculateDoseFromDirectBsa(1.82, 100);
+    const { steps } = calc.calculateDoseFromDirectBsa(1.82, 175);
     steps.forEach((step) => {
       expect(typeof step.title).toBe('string');
       expect(step.title.length).toBeGreaterThan(0);
@@ -111,6 +138,10 @@ describe('BSA-based dose, entered directly (calculateDoseFromDirectBsa)', () => 
       expect(typeof step.latex).toBe('string');
       expect(step.latex.length).toBeGreaterThan(0);
     });
+  });
+
+  test('rejects an unsupported method', () => {
+    expect(() => calc.calculateDoseFromDirectBsa(1.82, 175, 'bogus')).toThrow();
   });
 });
 

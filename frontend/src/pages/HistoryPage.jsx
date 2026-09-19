@@ -10,6 +10,7 @@ const COLUMNS = [
   { key: 'created_at', label: 'Date/time' },
   { key: 'category', label: 'Category' },
   { key: 'calc_type', label: 'Type' },
+  { key: 'bsa_dose_method', label: 'BSA method' },
   { key: 'drug_name', label: 'Drug' },
   { key: 'weight_kg', label: 'Weight (kg)' },
   { key: 'height_cm', label: 'Height (cm)' },
@@ -85,6 +86,13 @@ export default function HistoryPage() {
                     <td>{formatDateTime(r.created_at)}</td>
                     <td>{r.category}</td>
                     <td>{r.calc_type === 'bsa' ? 'BSA-based' : 'Weight-based'}</td>
+                    <td>
+                      {r.bsa_dose_method === 'ratio'
+                        ? 'Ratio (÷1.73 m²)'
+                        : r.bsa_dose_method === 'direct'
+                        ? 'Direct'
+                        : '-'}
+                    </td>
                     <td>{r.drug_name || '-'}</td>
                     <td>{r.weight_kg ?? '-'}</td>
                     <td>{r.height_cm ?? '-'}</td>

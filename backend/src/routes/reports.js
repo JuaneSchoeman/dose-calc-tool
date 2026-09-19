@@ -63,7 +63,7 @@ router.get('/detailed', requireAdmin, async (req, res, next) => {
 
     const rows = await db.all(
       `SELECT c.id, c.created_at, u.identifier_number, c.category, c.calc_type,
-              c.weight_kg, c.height_cm, c.bsa_m2, c.dose_per_unit, c.dose_rate_label, c.total_dose, c.dose_unit, c.drug_name
+              c.weight_kg, c.height_cm, c.bsa_m2, c.dose_per_unit, c.dose_rate_label, c.total_dose, c.dose_unit, c.drug_name, c.bsa_dose_method
        FROM calculations c
        JOIN users u ON u.id = c.user_id
        WHERE ${conditions.join(' AND ')}

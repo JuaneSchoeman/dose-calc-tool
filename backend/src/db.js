@@ -95,20 +95,28 @@ async function initSchema() {
       total_dose      REAL NOT NULL,
       dose_unit       TEXT NOT NULL,
       drug_name       TEXT,
+      bsa_dose_method TEXT,
       created_at      TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
 
-  // Migration guard: a database created before dose_rate_label/drug_name
-  // existed won't have those columns yet. ALTER TABLE ADD COLUMN is safe to
-  // run repeatedly once guarded like this, and leaves existing rows' new
-  // columns as NULL rather than losing any data.
+  // Migration guard: a database created before dose_rate_label/drug_name/
+  // bsa_dose_method existed won't have those columns yet. ALTER TABLE ADD
+  // COLUMN is safe to run repeatedly once guarded like this, and leaves
+  // existing rows' new columns as NULL rather than losing any data.
+  // bsa_dose_method records which of the two distinct BSA-based dosing
+  // calculations (calculations.js: BSA_DOSE_METHODS - 'direct' or 'ratio')
+  // produced a given 'bsa' calc_type row; it is NULL for 'weight' rows,
+  // where the distinction does not apply.
   const calculationColumns = await all('PRAGMA table_info(calculations)');
   if (!calculationColumns.some((col) => col.name === 'dose_rate_label')) {
     await client.execute('ALTER TABLE calculations ADD COLUMN dose_rate_label TEXT;');
   }
   if (!calculationColumns.some((col) => col.name === 'drug_name')) {
     await client.execute('ALTER TABLE calculations ADD COLUMN drug_name TEXT;');
+  }
+  if (!calculationColumns.some((col) => col.name === 'bsa_dose_method')) {
+    await client.execute('ALTER TABLE calculations ADD COLUMN bsa_dose_method TEXT;');
   }
 
   await client.execute('CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id);');

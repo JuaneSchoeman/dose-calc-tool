@@ -179,6 +179,17 @@ const FIELD_TO_RANGE = {
 //                               directly; weight/height are not required
 //                               and are not stored for that record.
 //
+// Also for calcType 'bsa', bsaDoseMethod chooses which of the two distinct
+// BSA-based dosing calculations to apply to dosePerUnit (see the
+// BSA_DOSE_METHODS comment in calculations.js for the full rationale):
+//   'direct' (default) - dosePerUnit is a genuine mg/m^2 protocol rate
+//                         (oncology/paediatric style); totalDose = rate x BSA.
+//   'ratio'             - dosePerUnit is a known reference (typically adult)
+//                         total dose; totalDose is that dose scaled by the
+//                         patient's BSA relative to the 1.73 m^2 reference.
+// This choice is independent of bsaInputMode above - either can be combined
+// with either.
+//
 // drugName is optional free text (e.g. "Paracetamol") so the result can
 // read as "500 mg paracetamol" rather than a bare number; it plays no
 // part in the calculation and is trimmed/length-capped before storage.
@@ -193,6 +204,7 @@ router.post('/calculate', requireLogin, async (req, res, next) => {
     heightUnit,
     bsaInputMode,
     bsaValue,
+    bsaDoseMethod,
     dosePerUnit,
     doseMassUnit,
     drugName,
@@ -241,7 +253,16 @@ router.post('/calculate', requireLogin, async (req, res, next) => {
   }
 
   if (calcType === 'bsa') {
-    const doseRateLabel = doseUnit ? `${doseUnit}/m\u00b2` : '';
+    // --- FR8: validate the BSA dose method (defaults to 'direct') ---
+    const resolvedBsaDoseMethod = bsaDoseMethod === undefined || bsaDoseMethod === '' ? 'direct' : bsaDoseMethod;
+    if (!calc.BSA_DOSE_METHODS.includes(resolvedBsaDoseMethod)) {
+      return res.status(400).json({ error: 'bsaDoseMethod must be "direct" or "ratio".' });
+    }
+    // The unit suffix (e.g. "mg/m²") is the same either way, but the method
+    // is appended so the audit trail (history/reports) always shows which
+    // of the two distinct calculations produced the stored total dose.
+    const methodSuffix = resolvedBsaDoseMethod === 'ratio' ? ' (ratio to 1.73 m² reference)' : ' (direct)';
+    const doseRateLabel = doseUnit ? `${doseUnit}/m\u00b2${methodSuffix}` : '';
 
     if (bsaInputMode === 'direct') {
       // --- FR8: validate the directly entered BSA ---
@@ -249,19 +270,20 @@ router.post('/calculate', requireLogin, async (req, res, next) => {
       if (!bsaCheck.valid) return res.status(400).json({ error: bsaCheck.message });
 
       const bsa = calc.round(Number(bsaValue), 4);
-      const { totalDose, steps } = calc.calculateDoseFromDirectBsa(bsa, Number(dosePerUnit));
+      const { totalDose, steps } = calc.calculateDoseFromDirectBsa(bsa, Number(dosePerUnit), resolvedBsaDoseMethod);
 
       const info = await db.run(
         `INSERT INTO calculations
-           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
-         VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?, ?)`,
-        [req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null]
+           (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name, bsa_dose_method)
+         VALUES (?, ?, 'bsa', NULL, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.session.user.id, category, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null, resolvedBsaDoseMethod]
       );
 
       return res.json({
         calcId: info.lastInsertRowid,
         calcType: 'bsa',
         bsaInputMode: 'direct',
+        bsaDoseMethod: resolvedBsaDoseMethod,
         bsa,
         totalDose,
         doseUnit,
@@ -286,19 +308,20 @@ router.post('/calculate', requireLogin, async (req, res, next) => {
       return res.status(400).json({ error: heightRangeCheck.message });
     }
 
-    const { bsa, totalDose, steps } = calc.calculateBsaDose(weightKg, heightCm, Number(dosePerUnit));
+    const { bsa, totalDose, steps } = calc.calculateBsaDose(weightKg, heightCm, Number(dosePerUnit), resolvedBsaDoseMethod);
 
     const info = await db.run(
       `INSERT INTO calculations
-         (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name)
-       VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null]
+         (user_id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name, bsa_dose_method)
+       VALUES (?, ?, 'bsa', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.session.user.id, category, weightKg, heightCm, bsa, Number(dosePerUnit), doseRateLabel, totalDose, doseUnit, cleanDrugName || null, resolvedBsaDoseMethod]
     );
 
     return res.json({
       calcId: info.lastInsertRowid,
       calcType: 'bsa',
       bsaInputMode: 'measurements',
+      bsaDoseMethod: resolvedBsaDoseMethod,
       weightKg,
       heightCm,
       bsa,
@@ -320,7 +343,7 @@ router.post('/calculate', requireLogin, async (req, res, next) => {
 router.get('/history', requireLogin, async (req, res, next) => {
   try {
     const rows = await db.all(
-      `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name, created_at
+      `SELECT id, category, calc_type, weight_kg, height_cm, bsa_m2, dose_per_unit, dose_rate_label, total_dose, dose_unit, drug_name, bsa_dose_method, created_at
        FROM calculations WHERE user_id = ? ORDER BY created_at DESC LIMIT 500`,
       [req.session.user.id]
     );

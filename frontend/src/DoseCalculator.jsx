@@ -81,6 +81,7 @@ export default function DoseCalculator() {
   const [heightInches, setHeightInches] = useState('');
   const [bsaInputMode, setBsaInputMode] = useState('measurements');
   const [bsaValue, setBsaValue] = useState('');
+  const [bsaDoseMethod, setBsaDoseMethod] = useState('direct');
   const [dosePerUnit, setDosePerUnit] = useState('');
   const [doseMassUnit, setDoseMassUnit] = useState('mg');
   const [drugName, setDrugName] = useState('');
@@ -181,6 +182,7 @@ export default function DoseCalculator() {
     setHeightInches('');
     setBsaInputMode('measurements');
     setBsaValue('');
+    setBsaDoseMethod('direct');
     setDosePerUnit('');
     setDoseMassUnit('mg');
     setDrugName('');
@@ -211,6 +213,7 @@ export default function DoseCalculator() {
           heightUnit: effectiveHeightUnit,
           bsaInputMode,
           bsaValue,
+          bsaDoseMethod,
           dosePerUnit,
           doseMassUnit,
           drugName,
@@ -348,6 +351,47 @@ export default function DoseCalculator() {
             </div>
           )}
 
+          {isBsa && (
+            <div className="field-group">
+              <label>
+                Which BSA dose calculation? <span className="required-tag">*</span>
+              </label>
+              <div className="choice-group" role="radiogroup" aria-label="BSA dose method">
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="bsa-dose-method-direct"
+                    name="bsaDoseMethod"
+                    value="direct"
+                    checked={bsaDoseMethod === 'direct'}
+                    onChange={() => setBsaDoseMethod('direct')}
+                  />
+                  <label htmlFor="bsa-dose-method-direct">
+                    Direct BSA dosing (dose per m² × BSA) — standard oncology/paediatric protocol dosing
+                  </label>
+                </div>
+                <div className="choice-option">
+                  <input
+                    type="radio"
+                    id="bsa-dose-method-ratio"
+                    name="bsaDoseMethod"
+                    value="ratio"
+                    checked={bsaDoseMethod === 'ratio'}
+                    onChange={() => setBsaDoseMethod('ratio')}
+                  />
+                  <label htmlFor="bsa-dose-method-ratio">
+                    BSA-ratio adjustment (patient BSA ÷ 1.73 m² × reference dose) — scale a known reference
+                    dose for this patient&apos;s body size
+                  </label>
+                </div>
+              </div>
+              <p className="help-text">
+                These are two different calculations, not two ways of writing the same one — pick the one
+                that matches how the prescribed dose was given to you.
+              </p>
+            </div>
+          )}
+
           {showMeasurementFields && (
           <div className="field-group grouped">
             <label htmlFor="weightValue">
@@ -462,7 +506,8 @@ export default function DoseCalculator() {
 
           <div className="field-group grouped">
             <label htmlFor="dosePerUnit">
-              Prescribed dose <span className="required-tag">*</span>
+              {isBsa && bsaDoseMethod === 'ratio' ? 'Reference dose' : 'Prescribed dose'}{' '}
+              <span className="required-tag">*</span>
             </label>
             <div className="input-with-unit">
               <input
@@ -487,11 +532,16 @@ export default function DoseCalculator() {
                     </option>
                   ))}
                 </select>
-                <span className="dose-unit-suffix">/{isBsa ? 'm\u00b2' : 'kg'}</span>
+                {isBsa && bsaDoseMethod === 'direct' && <span className="dose-unit-suffix">{'/m\u00b2'}</span>}
+                {!isBsa && <span className="dose-unit-suffix">/kg</span>}
               </div>
             </div>
             <p className="help-text">
-              {isBsa ? 'Dose per square metre of body surface area.' : 'Dose per kilogram of body weight.'}
+              {isBsa && bsaDoseMethod === 'ratio'
+                ? "The known reference dose (e.g. an adult dose in mg) to scale for this patient's BSA."
+                : isBsa
+                ? 'Dose per square metre of body surface area, as given in the protocol/chart.'
+                : 'Dose per kilogram of body weight.'}
             </p>
             <p className="field-error">{doseError}</p>
           </div>
@@ -546,6 +596,14 @@ export default function DoseCalculator() {
             {result.doseRateLabel && (
               <p className="help-text" style={{ marginTop: 8 }}>
                 Prescribed as {dosePerUnit} {result.doseRateLabel}
+              </p>
+            )}
+            {result.calcType === 'bsa' && result.bsaDoseMethod && (
+              <p className="help-text" style={{ marginTop: 4 }}>
+                Method:{' '}
+                {result.bsaDoseMethod === 'ratio'
+                  ? 'BSA-ratio adjustment (patient BSA ÷ 1.73 m² × reference dose)'
+                  : 'Direct BSA dosing (dose per m² × BSA)'}
               </p>
             )}
           </div>
